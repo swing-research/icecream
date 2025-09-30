@@ -1,0 +1,88 @@
+data:
+  save_dir: "runs/default/"
+  tomo0_files: []
+  tomo1_files: []
+  # Optional there is an inbuilt mask generator as well
+  mask_file: null
+   # Option 1: use tilt_min and tilt_max
+  #tilt_max: 57.1
+  #tilt_min: -60.0
+  # Option 2: use angle_file instead (comment above lines)
+  angle_file: null
+
+
+train_params:
+  device: 0
+  input_crop_size: 72
+  epochs: 50000
+  scale: 2.0
+  miss_wedge_delay: 0
+  use_directional_tv_loss: false
+  tv_scale: 0.01
+  tv_dim: 3
+  batch_size: 8 # Change this if doesnt fit in memory
+  use_fourier: false
+  use_spherical_support: true
+  wedge_low_support: 0
+  ref_wedge_support: 1
+  wedge_double_size: true
+  n2n_eq: true
+  save_n_epochs: 5000
+  compute_avg_loss_n_epochs: 1000
+  use_flips: true
+  normalize_crops: false
+  use_inp_wedge: false
+  do_rot_90_fraction: 0.5
+  learning_rate: 1e-4
+  use_mixed_precision: true
+  repeat_runs: true
+  detach_estimates: false
+  no_window: false
+  no_n2n_window: true
+  view_as_real: true
+  use_rotated_obs_loss: false
+  obs_rot_scale: 1.0
+  use_rotated_inp_reference: false
+  scale_inp: 4.0
+  detach_reference: false
+  use_scheduler: false
+  use_gaussian_window: false
+  sigma_gaussian_window: 0.5
+  scheduler_milestones: 
+    - 10000
+    - 150000
+  upsample_volume: false
+  eq_use_direct: false
+  eq_real_correction: true
+  min_distance: 0.5
+  use_flips_tr: false
+  window_type: "boxcar"
+
+predict_params:
+  batch_size: 5
+  stride: 36
+  run_multi: null
+  pre_pad: true
+  pre_pad_size: null
+  avg_pool: false
+
+model_params:
+  name: "unet3d_bf"
+  num_levels: 4
+  upsample: "default"
+  layer_order: "cr"
+  use_bias: false
+  padding_mode: "zeros"
+  pool_type: "max"
+  dropout_prob: 0.1
+# model_params:
+#   name: "iso_unet3d"
+
+mask_params:
+  use_mask: true
+  mask_frac: 0.5
+
+
+pretrain_params:
+  use_pretrain: false
+  model_path: None
