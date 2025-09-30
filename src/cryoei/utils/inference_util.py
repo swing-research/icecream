@@ -1,7 +1,7 @@
 import torch
 from torch.utils.data import DataLoader
 import torch.nn.functional as F
-from utils.utils import get_measurement
+from cryoei.utils.utils import get_measurement
 from skimage.filters import window as skimage_window
 
 from tqdm import tqdm

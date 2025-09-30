@@ -10,8 +10,8 @@ from torch.utils.data import DataLoader
 from cryoei.utils.utils import get_wedge_3d_new,symmetrize_3D,get_measurement,fourier_loss
 from cryoei.utils.mask_util import make_mask
 
-from dataset.volumes import singleVolume
-from utils.inference_util import inference,inference_2
+from cryoei.dataset.volumes import singleVolume
+from cryoei.utils.inference_util import inference,inference_2
 from tqdm import tqdm
 import json
 
