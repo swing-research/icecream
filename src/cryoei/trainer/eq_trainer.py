@@ -71,8 +71,8 @@ class EquivariantTrainer(BaseTrainer):
         theta[:,:,:3] = torch.eye(3)
         self.grid = torch.nn.functional.affine_grid(theta, (1,1,self.crop_size,
                                                             self.crop_size,
-                                                            self.crop_size)).to(self.device)
-        
+                                                            self.crop_size), align_corners=False).to(self.device)
+
 
     
     def get_estimates(self, inp_1, inp_2):
@@ -80,7 +80,7 @@ class EquivariantTrainer(BaseTrainer):
         Computes the estimates for the input crops inp_1 and inp_2.
         """
         if self.configs.use_mixed_precision:
-            with self.autocast():
+            with self.autocast:
                 est_1 = self.model(inp_1[:,None])[:,0]
                 est_2 = self.model(inp_2[:,None])[:,0]
             est_1 = est_1.float()

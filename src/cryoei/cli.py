@@ -54,6 +54,7 @@ def cli_train(
 
     # training knobs
     batch_size: Optional[int] = typer.Option(None, help="Training batch size"),
+    scale: Optional[float] = typer.Option(None, help="Scaling factor"),
     epochs: Optional[int] = typer.Option(None, help="Number of epochs"),
     save_n_epochs: Optional[int] = typer.Option(None, help="Checkpoint every N epochs"),
     compute_avg_loss: Optional[int] = typer.Option(None, help="Average loss every N epochs"),
@@ -74,6 +75,7 @@ def cli_train(
     if batch_size is not None: cli_updates["train_params"]["batch_size"] = batch_size
     if epochs is not None: cli_updates["train_params"]["epochs"] = epochs
     if save_n_epochs is not None: cli_updates["train_params"]["save_n_epochs"] = save_n_epochs
+    if scale is not None: cli_updates["train_params"]["scale"] = scale
     if compute_avg_loss is not None:
         cli_updates["train_params"]["compute_avg_loss_n_epochs"] = compute_avg_loss
 

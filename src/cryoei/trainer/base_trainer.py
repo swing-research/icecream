@@ -6,6 +6,7 @@ import os
 import torch
 import numpy as np
 import mrcfile
+import sys
 from torch.utils.data import DataLoader
 from cryoei.utils.utils import get_wedge_3d_new,symmetrize_3D,get_measurement,fourier_loss
 from cryoei.utils.mask_util import make_mask
@@ -215,7 +216,14 @@ class BaseTrainer:
             scaler = None
             autocast = None            
         self.current_epoch = 0
-        for epoch in tqdm(range(repeats), desc="Training"):
+
+        disable_bar = not sys.stderr.isatty()  # keep logs clean on non-TTY (e.g., SLURM)
+
+        pbar = tqdm(total=repeats, desc="Training", dynamic_ncols=True, disable=disable_bar)
+        ema = None
+        alpha = 0.1  # EMA smoothing for display
+
+        for epoch in range(repeats):
             self.optimizer.zero_grad()
             self.current_epoch = epoch
             data = self.vol_data.get_random_crop(self.configs.batch_size)
@@ -240,7 +248,12 @@ class BaseTrainer:
                 lr_scheduler.step()
                 # with warmup_scheduler.dampening():
                 #     lr_scheduler.step()
-            tqdm.write(f"Epoch {epoch+1}/{repeats}, Loss: {loss.item():.4f}")
+
+            loss_val = float(loss.detach().item())
+            ema = loss_val if ema is None else (alpha * loss_val + (1 - alpha) * ema)
+            #cur_lr = self.optimizer.param_groups[0]["lr"]
+            pbar.set_postfix(epoch=epoch + 1, ema_loss=f"{ema:.4f}", loss=f"{loss_val:.4f}")
+            pbar.update(1)
             if epoch>0 and epoch % self.configs.compute_avg_loss_n_epochs == 0:
                 self.compute_average_loss()
 
