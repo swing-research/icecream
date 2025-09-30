@@ -6,8 +6,8 @@ import argparse
 import yaml
 from types import SimpleNamespace
 import numpy as np
-from models import get_model
-from trainer import EquivariantTrainer
+from .models import get_model
+from .trainer import EquivariantTrainer
 import mrcfile
 import os
 import json
