@@ -208,8 +208,8 @@ class BaseTrainer:
 
         if self.configs.use_mixed_precision:
             print("Using mixed precision training")
-            scaler = torch.cuda.amp.GradScaler()
-            self.autocast = torch.cuda.amp.autocast
+            scaler = torch.amp.GradScaler('cuda')
+            self.autocast = torch.amp.autocast('cuda')
         else:
             print("Not using mixed precision training")
             scaler = None

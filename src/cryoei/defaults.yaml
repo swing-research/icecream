@@ -17,9 +17,6 @@ train_params:
   epochs: 50000
   scale: 2.0
   miss_wedge_delay: 0
-  use_directional_tv_loss: false
-  tv_scale: 0.01
-  tv_dim: 3
   batch_size: 8 # Change this if doesnt fit in memory
   use_fourier: false
   use_spherical_support: true
@@ -42,12 +39,8 @@ train_params:
   view_as_real: true
   use_rotated_obs_loss: false
   obs_rot_scale: 1.0
-  use_rotated_inp_reference: false
-  scale_inp: 4.0
   detach_reference: false
   use_scheduler: false
-  use_gaussian_window: false
-  sigma_gaussian_window: 0.5
   scheduler_milestones: 
     - 10000
     - 150000

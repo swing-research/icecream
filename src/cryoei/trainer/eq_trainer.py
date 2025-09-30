@@ -53,8 +53,7 @@ class EquivariantTrainer(BaseTrainer):
                                                wedge_support=self.configs.ref_wedge_support)[:-1,:-1,:-1]
         self.wedge_ref = self.get_real_binary_filter(self.wedge_ref)
         
-        self.gaussian_window = self.gaussian_3d_window(self.crop_size_eq, 
-                                                       sigma=self.configs.sigma_gaussian_window).to(self.device)
+
 
 
         #self.window = None
@@ -74,34 +73,7 @@ class EquivariantTrainer(BaseTrainer):
                                                             self.crop_size,
                                                             self.crop_size)).to(self.device)
         
-    # def merge_crops(self,inp_small,inp_large):
 
-    #     """
-    #     Merges the small input crop into the large input crop using the merge window.
-    #     """
-
-    #     inp_large = inp_large.clone()
-
-    #     if len(inp_small.shape) == 4:
-    #         window_used = self.window_n2n[None]
-    #     elif len(inp_small.shape) == 3:
-    #         window_used = self.window_n2n
-    #     if self.configs.merge_use_window:
-    #         insert_crop = crop_vol(inp_large,self.crop_size_eq)*(1-window_used) + inp_small*window_used
-    #     else:
-    #         insert_crop =  inp_small 
-
-    #     if len(inp_small.shape) == 4:
-    #         inp_large[:,self.crop_size//2-self.crop_size_eq//2:self.crop_size//2+self.crop_size_eq//2,
-    #                 self.crop_size//2-self.crop_size_eq//2:self.crop_size//2+self.crop_size_eq//2,
-    #                 self.crop_size//2-self.crop_size_eq//2:self.crop_size//2+self.crop_size_eq//2] =  insert_crop
-    #     elif len(inp_small.shape) == 3:
-    #         inp_large[self.crop_size//2-self.crop_size_eq//2:self.crop_size//2+self.crop_size_eq//2,
-    #                 self.crop_size//2-self.crop_size_eq//2:self.crop_size//2+self.crop_size_eq//2,
-    #                 self.crop_size//2-self.crop_size_eq//2:self.crop_size//2+self.crop_size_eq//2] =  insert_crop
-    #     else:
-    #         raise ValueError("Input shape not supported for merging crops.")
-    #     return inp_large
     
     def get_estimates(self, inp_1, inp_2):
         """
@@ -121,46 +93,8 @@ class EquivariantTrainer(BaseTrainer):
     
 
 
-    def directional_tv_loss_iso(self, inp):
-        """
-        Computes the isotropic total variation loss for the input.
-        """
-        if len(inp.shape) == 3:
-            inp = inp[:,None]
-        if self.configs.tv_dim ==1:
-            dval = torch.abs(inp[:,:,:,:-1] - inp[:,:,:,1:])**2
-        elif self.configs.tv_dim == 2:
-            dx = torch.abs(inp[:,:,:-1,:] - inp[:,:,1:,:])**2 
-            dy = torch.abs(inp[:,:,:,:-1] - inp[:,:,:,1:])**2
-            dval = dx[:,:,:,:-1] + dy[:,:,:-1]
-        elif self.configs.tv_dim == 3:
-            dx = torch.abs(inp[:,:,:-1,:] - inp[:,:,1:,:])**2 
-            dy = torch.abs(inp[:,:,:,:-1] - inp[:,:,:,1:])**2
-            dz = torch.abs(inp[:,:-1,:,:] - inp[:,1:,:,:])**2
-            dval = dx[:,:-1,:,:-1] + dy[:,:-1,:-1] + dz[:,:,:-1,:-1]
-        else:
-            raise ValueError("Invalid tv_dim value. Must be 1, 2, or 3.")
-        return torch.mean(torch.sqrt(dval + 1e-8))
 
-    def gaussian_3d_window(self, size, sigma=1.0):
-        """
-        Create a 3D Gaussian window.
-        
-        Args:
-            size (int): Size of the window (size x size x size).
-            sigma (float): Standard deviation of the Gaussian.
-        
-        Returns:
-            torch.Tensor: 3D Gaussian window.
-        """
-        x = torch.linspace(-1, 1, size+1)[:size]  # Ensure size is correct
-        y = torch.linspace(-1, 1, size+1)[:size]
-        z = torch.linspace(-1, 1, size+1)[:size]
-        x, y, z = torch.meshgrid(x, y, z, indexing='ij')
-        gauss = torch.exp(-((x ** 2 + y ** 2 + z ** 2) / (2 * sigma ** 2))) 
 
-        gauss /= gauss.max()  # Normalize the window
-        return gauss  # Add a channel dimension
 
     def compute_loss(self,inp_1,inp_2):
 
@@ -173,12 +107,6 @@ class EquivariantTrainer(BaseTrainer):
 
         est_1, est_2 = self.get_estimates(inp_1, inp_2)
 
-
-        if self.configs.use_gaussian_window:
-            est_1 = get_measurement(est_1, self.gaussian_window)
-            est_2 = get_measurement(est_2, self.gaussian_window)
-            inp_1 = get_measurement(inp_1, self.gaussian_window)
-            inp_2 = get_measurement(inp_2, self.gaussian_window)
 
 
         obs_loss = fourier_loss(inp_2,est_1,
@@ -252,11 +180,6 @@ class EquivariantTrainer(BaseTrainer):
         est_1_rot_est, est_2_rot_est = self.get_estimates(est_1_rot_inp, est_2_rot_inp)
 
 
-        if self.configs.use_gaussian_window:
-            est_1_rot_est = get_measurement(est_1_rot_est, self.gaussian_window)
-            est_2_rot_est = get_measurement(est_2_rot_est, self.gaussian_window)
-            est_1_ref = get_measurement(est_1_ref, self.gaussian_window)
-            est_2_ref = get_measurement(est_2_ref, self.gaussian_window)
 
 
         if self.configs.n2n_eq:
@@ -279,29 +202,12 @@ class EquivariantTrainer(BaseTrainer):
             equi_loss_est = 0      
 
 
-        if self.configs.use_rotated_inp_reference:
-            equi_loss_inp = (fourier_loss_batch(inp_2_rot,est_1_rot_est,
-                            wedge_rot, 
-                            self.criteria,
-                            use_fourier=self.configs.use_fourier,
-                            view_as_real=self.configs.view_as_real,
-                            window=self.window) + fourier_loss_batch(inp_1_rot,
-                                                    est_2_rot_est, 
-                                                    wedge_rot, 
-                                                    self.criteria,
-                                                    use_fourier=self.configs.use_fourier,
-                                                    view_as_real=self.configs.view_as_real,
-                                                    window=self.window))*self.configs.scale_inp              
-        else:
-            equi_loss_inp = 0
 
-        loss = obs_loss + equi_loss_est + equi_loss_inp
+        loss = obs_loss + equi_loss_est 
 
-        if self.configs.use_directional_tv_loss:
-            tv_loss = self.directional_tv_loss_iso(est_1) + self.directional_tv_loss_iso(est_2)
-            loss += tv_loss * self.configs.tv_scale
 
-        equi_loss = equi_loss_est + equi_loss_inp
+
+        equi_loss = equi_loss_est
 
         with torch.no_grad():
             self.loss_set.append(loss.item())
