@@ -12,7 +12,7 @@ and the loader also randomly crops and rotates the croped volume to generate the
 import torch
 from torch.utils.data import Dataset   
 import numpy as np
-from utils import generate_all_cube_symmetries_torch ,crop_volumes, generate_random_rotate
+from cryoei.utils import generate_all_cube_symmetries_torch ,crop_volumes, generate_random_rotate
 
 
 class subvolumes(Dataset):

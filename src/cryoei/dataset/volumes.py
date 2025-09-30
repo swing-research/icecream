@@ -6,9 +6,9 @@ and the loader also randomly crops and rotates the croped volume to generate the
 
 import torch
 import numpy as np
-from utils.utils import generate_all_cube_symmetries_torch ,crop_volumes,crop_volumes_mask
-from utils.mask_util import make_mask
-from utils.utils import upsample_fourier_rfft2x
+from cryoei.utils.utils import generate_all_cube_symmetries_torch ,crop_volumes,crop_volumes_mask
+from cryoei.utils.mask_util import make_mask
+from cryoei.utils.utils import upsample_fourier_rfft2x
 
 from skimage.filters import window as skimage_window
 class singleVolume:
