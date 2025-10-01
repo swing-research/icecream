@@ -78,7 +78,7 @@ def get_latest_epoch(model_path):
     
     return max(epochs)
 
-def predict(config_yaml,epoch=-1,crop_size=None,batch_size=0):
+def predict(config_yaml,epoch=-1,crop_size=None,batch_size=0, save_name=None):
 
     configs = SimpleNamespace(**config_yaml)
 
@@ -137,6 +137,9 @@ def predict(config_yaml,epoch=-1,crop_size=None,batch_size=0):
     model_path = os.path.join(save_path,'model')
 
     vol_est_name = 'vol_est'
+
+    if save_name is not None:
+        vol_est_name = save_name
     if epoch != -1:
         vol_est_name += f'_epoch_{epoch}'
 
@@ -173,7 +176,7 @@ def predict(config_yaml,epoch=-1,crop_size=None,batch_size=0):
     # Evaluate the model
 
 
-    vol_est = trainer.predict(wedge=wedge, **configs.predict_params)
+    vol_est = trainer.predict_dir(wedge=wedge, **configs.predict_params)
 
     # Save the estimated volume
     vol_save_path = os.path.join(save_path, vol_est_name)

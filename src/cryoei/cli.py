@@ -99,6 +99,7 @@ def cli_predict(
 
     # (allow data overrides too, in case user points to a different exp)
     save_dir: Optional[Path] = typer.Option(None, help="Output/experiment directory"),
+    save_name: Optional[str] = typer.Option(None, help="Output volume name"),
     tomo0: Optional[List[str]] = typer.Option(None, help="Volume set 0"),
     tomo1: Optional[List[str]] = typer.Option(None, help="Volume set 1"),
     mask:  Optional[Path] = typer.Option(None, help="Mask file"),
@@ -123,6 +124,7 @@ def cli_predict(
         cli_updates["predict_params"]["batch_size"] = batch_size
     if crop_size is not None:
         cli_updates["predict_params"]["crop_size"] = crop_size
+    
 
     cfg = deep_update(cfg, cli_updates)
 
@@ -132,7 +134,7 @@ def cli_predict(
     require(cfg, need)
 
     # your predict() signature: predict(config_yaml, epoch=-1, crop_size=None, batch_size=0)
-    predict(cfg, epoch=epoch, crop_size=crop_size, batch_size=(batch_size or 0))
+    predict(cfg, epoch=epoch, crop_size=crop_size, batch_size=(batch_size or 0), save_name=save_name)
 
 if __name__ == "__main__":
     app()
