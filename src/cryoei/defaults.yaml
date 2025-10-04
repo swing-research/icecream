@@ -54,7 +54,6 @@ train_params:
 predict_params:
   batch_size: 5
   stride: 36
-  run_multi: null
   pre_pad: true
   pre_pad_size: null
   avg_pool: false
