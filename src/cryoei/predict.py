@@ -1,59 +1,20 @@
-"""
-Script to train a model using the provided configuration and dataset and evaluate it.
-"""
-import torch
-import argparse
-import yaml
+"""Predict a reconstruction using a trained model configuration."""
+
+from pathlib import Path
 from types import SimpleNamespace
+from typing import Optional
+
+import json
+import os
+
+import mrcfile
 import numpy as np
+import torch
+import typer
+import yaml
+
 from .models import get_model
 from .trainer import EquivariantTrainer
-import mrcfile
-import os
-import json
-
-def parse_args():
-    parser = argparse.ArgumentParser()
-
-    # Option 1: YAML config file
-    parser.add_argument('--config', type=str, help='Path to YAML config file')
-    # Optionall  use epoch parameter
-    parser.add_argument('--epoch', type=int, default=-1, help='Epoch to load the model from')
-    
-
-
-    # Parse the arguments
-    parser.add_argument('--crop_size', type=int , default=0, help='Crop size for the tomograms')
-    parser.add_argument('--batch_size', type=int , default=0, help='Batch size for prediction')
-
-
-    args = parser.parse_args()
-
-
-
-
-
-    #print(args)
-
-
-    config = {}
-
-    # If YAML config is provided, load it
-    if args.config:
-        with open(args.config, 'r') as f:
-            config = yaml.safe_load(f) or {}
-
-    print(config)
-
-    epoch = args.epoch
-    crop_size = args.crop_size
-    batch_size = args.batch_size
-
-
-    if crop_size ==0:
-        crop_size = None
-
-    return config, epoch,crop_size, batch_size
 
 
 def get_latest_epoch(model_path):
@@ -163,6 +124,9 @@ def predict(config_yaml,epoch=-1,crop_size=None,batch_size=0, save_name=None):
     if epoch ==-1:
         epoch = get_latest_epoch(model_path)
 
+    if epoch == -1:
+        raise ValueError(f"No saved model found in {model_path}")
+
     model_path = os.path.join(model_path, f'model_epoch_{epoch}.pt')
 
     # Load the model weights
@@ -185,9 +149,31 @@ def predict(config_yaml,epoch=-1,crop_size=None,batch_size=0, save_name=None):
     out.close()
 
 
+def main(
+    config: Optional[Path] = typer.Option(None, "--config", "-c", help="Path to YAML config file"),
+    epoch: int = typer.Option(-1, help="Epoch to load the model from"),
+    crop_size: Optional[int] = typer.Option(None, help="Crop size for the tomograms"),
+    batch_size: Optional[int] = typer.Option(None, help="Batch size for prediction"),
+):
+    """Entry point replacing the old argparse interface."""
+
+    config_dict = {}
+    if config:
+        with open(config, 'r') as f:
+            config_dict = yaml.safe_load(f) or {}
+
+    typer.echo(config_dict)
+    typer.echo(f"epoch: {epoch}")
+    typer.echo(f"crop_size: {crop_size}")
+    typer.echo(f"batch_size: {batch_size}")
+
+    predict(
+        config_dict,
+        epoch=epoch,
+        crop_size=crop_size,
+        batch_size=batch_size or 0,
+    )
+
+
 if __name__ == '__main__':
-    configs, epoch, crop_size, batch_size = parse_args()
-    print("epoch:", epoch)
-    print("crop_size:", crop_size)
-    print("batch_size:", batch_size)
-    predict(configs, epoch, crop_size, batch_size)
+    typer.run(main)

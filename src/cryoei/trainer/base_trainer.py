@@ -26,7 +26,14 @@ class BaseTrainer:
                  save_path = './',
                  ):
         
-        self.device = configs.device
+
+        raw_device = configs.device
+        if isinstance(raw_device, int):
+            device = "cpu" if raw_device == -1 else f"cuda:{raw_device}"
+        else:
+            device = str(raw_device)
+        self.device = torch.device(device)
+
         self.model = model.to(self.device)
         self.save_path = save_path
         
@@ -164,21 +171,21 @@ class BaseTrainer:
             if hasattr(self.configs, 'window_type') is False:
                 self.configs.window_type = 'boxcar'
 
-            self.vol_data = singleVolume(volume_1 = vol_1_t,
-                        volume_2=  vol_2_t, 
-                        wedge = self.wedge_input, 
-                        mask= vol_mask_t,
-                        mask_frac= mask_frac,
-                        crop_size= self.crop_size,
-                        use_flips=self.configs.use_flips,
-                        normalize_crops=self.configs.normalize_crops,
-                        upsample_volume=self.configs.upsample_volume,
-                        window_type=self.configs.window_type,
-                        min_distance=self.configs.min_distance,
-                        device=self.device
-                        )
-            
-            self.k_sets = self.vol_data.k_sets
+        self.vol_data = singleVolume(volume_1 = vol_1_t,
+                    volume_2=  vol_2_t, 
+                    wedge = self.wedge_input, 
+                    mask= vol_mask_t,
+                    mask_frac= mask_frac,
+                    crop_size= self.crop_size,
+                    use_flips=self.configs.use_flips,
+                    normalize_crops=self.configs.normalize_crops,
+                    upsample_volume=self.configs.upsample_volume,
+                    window_type=self.configs.window_type,
+                    min_distance=self.configs.min_distance,
+                    device=self.device
+                    )
+        
+        self.k_sets = self.vol_data.k_sets
             
 
 

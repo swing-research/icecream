@@ -12,7 +12,7 @@ data:
 
 
 train_params:
-  device: 0
+  device: 0 # eg. 0, 1, 2 for GPU or -1 for CPU or "cuda:0", "cuda:1"  and 'cpu' for CPU
   input_crop_size: 72
   epochs: 50000
   scale: 2.0

@@ -1,36 +1,21 @@
-"""
-Script to train a model using the provided configuration and dataset and evaluate it.
-"""
-import torch
-import argparse
-import yaml
+"""Train a model using the provided configuration and dataset and evaluate it."""
+
+from pathlib import Path
 from types import SimpleNamespace
+from typing import Optional
+
+import json
+import os
+
+import mrcfile
 import numpy as np
+import torch
+import typer
+import yaml
+
 from .models import get_model
 from .trainer import EquivariantTrainer
-import mrcfile
-import os
-import json
 
-def parse_args():
-    parser = argparse.ArgumentParser()
-
-    # Option 1: YAML config file
-    parser.add_argument('--config', type=str, help='Path to YAML config file')
-    args = parser.parse_args()
-
-    #print(args)
-
-    config = {}
-
-    # If YAML config is provided, load it
-    if args.config:
-        with open(args.config, 'r') as f:
-            config = yaml.safe_load(f) or {}
-
-    print(config)
-
-    return config
 
 def train_model(config_yaml):
 
@@ -126,6 +111,17 @@ def train_model(config_yaml):
     
 
 
+def main(config: Optional[Path] = typer.Option(None, "--config", "-c", help="Path to YAML config file")):
+    """Entry point mirroring the old argparse interface."""
+
+    config_dict = {}
+    if config:
+        with open(config, 'r') as f:
+            config_dict = yaml.safe_load(f) or {}
+
+    typer.echo(config_dict)
+    train_model(config_dict)
+
+
 if __name__ == '__main__':
-    configs = parse_args()
-    train_model(configs)
+    typer.run(main)
