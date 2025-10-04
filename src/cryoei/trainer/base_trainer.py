@@ -7,12 +7,11 @@ import torch
 import numpy as np
 import mrcfile
 import sys
-from torch.utils.data import DataLoader
 from cryoei.utils.utils import get_wedge_3d_new,symmetrize_3D,get_measurement,fourier_loss
 from cryoei.utils.mask_util import make_mask
 
 from cryoei.dataset.volumes import singleVolume
-from cryoei.utils.inference_util import inference,inference_2
+from cryoei.utils.inference_util import inference
 from tqdm import tqdm
 import json
 
@@ -92,7 +91,7 @@ class BaseTrainer:
 
 
     def normalize_volume(self, vol):
-        return (vol - vol.mean()) / vol.std()
+        return (vol - vol.mean()) / (vol.std() + 1e-8)
 
     def initialize_wedge(self,crop_size, wedge_support = None):
         """
@@ -142,19 +141,23 @@ class BaseTrainer:
             raise NotImplementedError("Loading multiple volumes is not implemented yet. Please provide a single volume path for each set.")
         
         if len(vol_paths_1) == 1:
-            vol_1 = mrcfile.open(vol_paths_1[0] ).data
+
+            with mrcfile.open(vol_paths_1[0]) as mrc:
+                vol_1 = mrc.data
             vol_1 = np.moveaxis(vol_1,0,2).astype(np.float32)
             vol_1_t =torch.tensor(vol_1, dtype=torch.float32, device='cpu')
             vol_1_t = self.normalize_volume(vol_1_t)
             
 
-            vol_2 = mrcfile.open(vol_paths_2[0] ).data
+            with mrcfile.open(vol_paths_2[0]) as mrc:
+                vol_2 = mrc.data
             vol_2 = np.moveaxis(vol_2,0,2).astype(np.float32)
             vol_2_t =torch.tensor(vol_2, dtype=torch.float32, device='cpu')
             vol_2_t = self.normalize_volume(vol_2_t)
 
         if vol_mask_path is not None:
-            vol_mask = mrcfile.open(vol_mask_path).data
+            with mrcfile.open(vol_mask_path) as mrc:
+                vol_mask = mrc.data
             vol_mask = np.moveaxis(vol_mask,0,2).astype(np.float32)
             vol_mask_t = torch.tensor(vol_mask, dtype=torch.float32, device='cpu')
         else:
@@ -187,7 +190,22 @@ class BaseTrainer:
         
         self.k_sets = self.vol_data.k_sets
             
+    
+    def get_estimates(self, inp_1, inp_2):
+        """
+        Computes the estimates for the input crops inp_1 and inp_2.
+        """
+        if self.configs.use_mixed_precision:
+            with self.autocast:
+                est_1 = self.model(inp_1[:,None])[:,0]
+                est_2 = self.model(inp_2[:,None])[:,0]
+            est_1 = est_1.float()
+            est_2 = est_2.float()
+        else:
+            est_1 = self.model(inp_1[:,None])[:,0]
+            est_2 = self.model(inp_2[:,None])[:,0]
 
+        return est_1, est_2
 
     def train(self,repeats =None):
         self.model.train()
@@ -279,9 +297,7 @@ class BaseTrainer:
         Returns:
             torch.Tensor: Computed loss.
         """
-        est_1= self.model(inp_1[:,0])[:,0]
-        est_2= self.model(inp_2[:,0])[:,0]
-
+        est_1, est_2 = self.get_estimates(inp_1, inp_2)
 
         loss = fourier_loss(target = inp_1, 
                             estimate = est_2,
@@ -359,8 +375,8 @@ class BaseTrainer:
         """
         if not os.path.exists(model_path):
             raise FileNotFoundError(f"Model path does not exist: {model_path}")
-        
-        checkpoint = torch.load(model_path, weights_only=False)
+
+        checkpoint = torch.load(model_path, weights_only=False, map_location=self.device)
         if pretrained:
             try:
                 print("Loading pretrained model")
@@ -382,200 +398,11 @@ class BaseTrainer:
 
 
 
-    def predict(self,stride = None,
-                crop_size = None,
-                batch_size =2, 
-                run_multi = None, 
-                wedge =None,
-                update_missing_wedge = False,
-                denoise_first = False,
-                pre_pad = True,
-                pre_pad_size = None,
-                avg_pool = False):
-        """
-        Predict using the trained model.
-        This method should be overridden by subclasses if needed.
-        stride: int, optional, if None the input crop size is used as stride
-        batch_size: int, optional, number of crops to process at once
-        run_multi: bool, optional, to run the model multiple times on each crop
-        wedge: torch.Tensor, optional, wedge to apply to the input
-        pre_pad: bool, optional, whether to apply pre-padding to the input
-        pre_pad_size: int, optional, size of the pre-padding to apply
-        avg_pool: bool, optional, whether to apply average pooling to the input, to somewhat mimic the rotational effects presetn in training
-        """
-        self.model.eval()
-
-        if stride is None:
-            stride = self.configs.input_crop_size
-
-        if pre_pad_size is None:
-            pre_pad_size = self.configs.input_crop_size//4
-
-        if crop_size is None:
-            crop_size = self.configs.input_crop_size
-        else:
-            self.window = self.initialize_window(crop_size)
-            pre_pad_size = crop_size//4
-
-        if self.configs.no_window:
-            self.window = None
-
-        #vol_input = (self.vol_data.volume_1 + self.vol_data.volume_2)/2
-
-        # vol_est, _ = inference(model = self.model, 
-        #                             vol_input = vol_input,
-        #                             size =self.configs.input_crop_size, 
-        #                             stride =stride, 
-        #                             batch_size=batch_size,
-        #                             window = self.window,
-        #                             run_multi=run_multi,
-        #                             wedge = wedge,
-        #                             pre_pad=pre_pad,
-        #                             pre_pad_size = pre_pad_size,
-        #                             avg_pool=avg_pool)
-
-        # vol_input = (self.vol_data.volume_1 + self.vol_data.volume_2)/2
-
-        # vol_est, _ = inference(model = self.model, 
-        #                             vol_input = vol_input,
-        #                             size =self.configs.input_crop_size, 
-        #                             stride =stride, 
-        #                             batch_size=batch_size,
-        #                             window = self.window,
-        #                             run_multi=None,
-        #                             wedge = wedge,
-        #                             pre_pad=pre_pad,
-        #                             pre_pad_size = pre_pad_size,
-        #                             avg_pool=avg_pool)
-        # if run_multi is not None and run_multi > 0:
-        #     for _ in range(run_multi):
-        #         vol_est = torch.tensor(vol_est, dtype=torch.float32, device=self.device)
-        #         vol_est, _ = inference(model = self.model, 
-        #                                 vol_input = vol_est,
-        #                                 size =self.configs.input_crop_size, 
-        #                                 stride =stride, 
-        #                                 batch_size=batch_size,
-        #                                 window = self.window,
-        #                                 run_multi=None,
-        #                                 wedge = wedge,
-        #                                 pre_pad=pre_pad,
-        #                                 pre_pad_size = pre_pad_size,
-        #                                 avg_pool=avg_pool)
-        wedge_used = wedge
-        update_missing_wedge_flag = False
-        if update_missing_wedge:
-            update_missing_wedge_flag = True
-            if wedge is None:
-                # if the self.wedge_eq is present use it
-                if hasattr(self, 'wedge_eq'):
-                    wedge_used = self.wedge_eq
-                else:
-                    wedge_used = self.wedge_input
-                
-
-        if denoise_first:
-            update_missing_wedge_flag = False
-            wedge_used = None
-
-        if hasattr(self.configs, 'window_type'):
-            self.window_type = self.configs.window_type
-        else:
-            self.window_type =  None
-
-        vol_est_1, _ = inference(model = self.model, 
-                                    vol_input = self.vol_data.volume_1,
-                                    size =crop_size, 
-                                    stride =stride, 
-                                    batch_size=batch_size,
-                                    window = self.window,
-                                    window_type = self.window_type,
-                                    run_multi=None,
-                                    wedge = wedge_used,
-                                    update_missing_wedge=update_missing_wedge_flag,
-                                    pre_pad=pre_pad,
-                                    pre_pad_size = pre_pad_size,
-                                    device=self.device,
-                                    upsampled_=self.configs.upsample_volume,
-                                    avg_pool=avg_pool)
-
-        vol_est_2, _ = inference(model = self.model, 
-                                    vol_input = self.vol_data.volume_2,
-                                    size =crop_size, 
-                                    stride =stride, 
-                                    batch_size=batch_size,
-                                    window = self.window,
-                                    window_type = self.window_type,
-                                    run_multi=None,
-                                    wedge = wedge_used,
-                                    update_missing_wedge=update_missing_wedge_flag,
-                                    pre_pad=pre_pad,
-                                    device=self.device,
-                                    pre_pad_size = pre_pad_size,
-                                    upsampled_=self.configs.upsample_volume,
-                                    avg_pool=avg_pool)   
-
-
-        if denoise_first:
-            update_missing_wedge_flag = True
-            if wedge is None:
-                # if the self.wedge_eq is present use it
-                if hasattr(self, 'wedge_eq'):
-                    wedge_used = self.wedge_eq
-                else:
-                    wedge_used = self.wedge_input    
-        
-        if run_multi is not None and run_multi > 0:
-            for i in range(run_multi):
-
-                # Dont update missing wedge for the last run
-                if denoise_first is False:
-                    if i == (run_multi - 1) and update_missing_wedge:
-                        wedge_used = None 
-                        update_missing_wedge_flag = False
-
-                      
-
-                vol_est_1 = torch.tensor(vol_est_1, dtype=torch.float32, device=self.device)
-                vol_est_2 = torch.tensor(vol_est_2, dtype=torch.float32, device=self.device)
-
-                vol_est_1, _ = inference(model = self.model, 
-                                            vol_input = vol_est_1,
-                                            size =crop_size, 
-                                            stride =stride, 
-                                            batch_size=batch_size,
-                                            window = self.window,
-                                            run_multi=None,
-                                            wedge = wedge_used,
-                                            update_missing_wedge=update_missing_wedge_flag,
-                                            pre_pad=pre_pad,
-                                            pre_pad_size = pre_pad_size,
-                                            avg_pool=avg_pool)
-
-                vol_est_2, _ = inference(model = self.model, 
-                                            vol_input = vol_est_2,
-                                            size =crop_size, 
-                                            stride =stride, 
-                                            batch_size=batch_size,
-                                            window = self.window,
-                                            run_multi=None,
-                                            wedge = wedge_used,
-                                            update_missing_wedge=update_missing_wedge_flag,
-                                            pre_pad=pre_pad,
-                                            pre_pad_size = pre_pad_size,
-                                            avg_pool=avg_pool)  
-
-        vol_est = (vol_est_1 + vol_est_2)/2
-        
-        return vol_est
 
 
     def predict_dir(self,stride = None,
                 crop_size = None,
                 batch_size =2, 
-                run_multi = None, 
-                wedge =None,
-                update_missing_wedge = False,
-                denoise_first = False,
                 pre_pad = True,
                 pre_pad_size = None,
                 avg_pool = False):
@@ -615,7 +442,7 @@ class BaseTrainer:
         else:
             self.window_type =  None
 
-        vol_est_1, _ = inference_2(model = self.model, 
+        vol_est_1, _ = inference(model = self.model, 
                                     vol_input = self.vol_data.volume_1,
                                     size =crop_size, 
                                     stride =stride, 
@@ -631,7 +458,7 @@ class BaseTrainer:
                                     upsampled_=self.configs.upsample_volume,
                                     avg_pool=avg_pool)
 
-        vol_est_2, _ = inference_2(model = self.model, 
+        vol_est_2, _ = inference(model = self.model, 
                                     vol_input = self.vol_data.volume_2,
                                     size =crop_size, 
                                     stride =stride, 

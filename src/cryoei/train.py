@@ -19,7 +19,10 @@ from .trainer import EquivariantTrainer
 
 def train_model(config_yaml):
 
+
+
     configs = SimpleNamespace(**config_yaml)
+
 
     data_config = SimpleNamespace(**configs.data)
 
