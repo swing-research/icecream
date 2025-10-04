@@ -102,7 +102,7 @@ def train_model(config_yaml):
 
     # Evaluate the model
     #vol_est = trainer.predict(**configs.predict_params)
-    vol_est = trainer.predict_dir(wedge=trainer.wedge_input, **configs.predict_params)
+    vol_est = trainer.predict_dir(**configs.predict_params)
 
 
     # Save the estimated volume
