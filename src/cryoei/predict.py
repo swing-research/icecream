@@ -140,7 +140,7 @@ def predict(config_yaml,epoch=-1,crop_size=None,batch_size=0, save_name=None):
     # Evaluate the model
 
 
-    vol_est = trainer.predict_dir(wedge=wedge, **configs.predict_params)
+    vol_est = trainer.predict_dir(**configs.predict_params)
 
     # Save the estimated volume
     vol_save_path = os.path.join(save_path, vol_est_name)
