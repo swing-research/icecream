@@ -94,7 +94,7 @@ def cli_predict(
     # necessary config
     config: Optional[Path] = typer.Option(None, help="YAML config file"),
     # optional overrides
-    iterations: int = typer.Option(-1, help="Epoch to load (default: latest in save_dir/model)"),
+    iteration: int = typer.Option(-1, help="Iteration to load (default: latest in save_dir/model)"),
     crop_size: Optional[int] = typer.Option(None, help="Crop size for prediction"),
     batch_size: Optional[int] = typer.Option(None, help="Batch size for prediction"),
 
@@ -134,7 +134,7 @@ def cli_predict(
     require(cfg, need)
 
     # your predict() signature: predict(config_yaml, epoch=-1, crop_size=None, batch_size=0)
-    predict(cfg, config_path=config, iterations=iterations, crop_size=crop_size, batch_size=(batch_size or 0), save_path=None)
+    predict(cfg, config_path=config, iteration=iteration, crop_size=crop_size, batch_size=(batch_size or 0), save_path=None)
 
 if __name__ == "__main__":
     app()
