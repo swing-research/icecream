@@ -97,9 +97,9 @@ def train_model(config_yaml):
             else:
                 print("No pretrained model path provided, training from scratch.")
     
-    trainer.train(repeats=train_config.epochs)
+    trainer.train(repeats=train_config.iterations)
 
-    trainer.save_model(epoch=train_config.epochs)
+    trainer.save_model(iteration=train_config.iterations)
 
     # Evaluate the model
     #vol_est = trainer.predict(**configs.predict_params)
