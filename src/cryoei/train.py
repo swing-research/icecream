@@ -15,6 +15,7 @@ import yaml
 
 from .models import get_model
 from .trainer import EquivariantTrainer
+from .utils.utils import combine_names
 
 
 def train_model(config_yaml):
@@ -104,9 +105,12 @@ def train_model(config_yaml):
     #vol_est = trainer.predict(**configs.predict_params)
     vol_est = trainer.predict_dir(**configs.predict_params)
 
+    name = combine_names(path_1, path_2)
+    print(f"Volume names: {name}")
+
 
     # Save the estimated volume
-    vol_save_path = os.path.join(save_path, 'vol_est.mrc')
+    vol_save_path = os.path.join(save_path, name)
     out = mrcfile.new(vol_save_path,overwrite=True)
     out.set_data(np.moveaxis(vol_est.astype(np.float32),2,0))
     out.close()

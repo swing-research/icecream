@@ -55,9 +55,9 @@ def cli_train(
     # training knobs
     batch_size: Optional[int] = typer.Option(None, help="Training batch size"),
     scale: Optional[float] = typer.Option(None, help="Scaling factor"),
-    epochs: Optional[int] = typer.Option(None, help="Number of epochs"),
-    save_n_epochs: Optional[int] = typer.Option(None, help="Checkpoint every N epochs"),
-    compute_avg_loss: Optional[int] = typer.Option(None, help="Average loss every N epochs"),
+    iterations: Optional[int] = typer.Option(None, help="Number of iterations"),
+    save_n_iterations: Optional[int] = typer.Option(None, help="Checkpoint every N iterations"),
+    compute_avg_loss: Optional[int] = typer.Option(None, help="Average loss every N iterations"),
 ):
     cfg = load_defaults()
     if config:
@@ -73,11 +73,11 @@ def cli_train(
     if save_dir: cli_updates["data"]["save_dir"] = str(save_dir)
 
     if batch_size is not None: cli_updates["train_params"]["batch_size"] = batch_size
-    if epochs is not None: cli_updates["train_params"]["epochs"] = epochs
-    if save_n_epochs is not None: cli_updates["train_params"]["save_n_epochs"] = save_n_epochs
+    if iterations is not None: cli_updates["train_params"]["iterations"] = iterations
+    if save_n_iterations is not None: cli_updates["train_params"]["save_n_iterations"] = save_n_iterations
     if scale is not None: cli_updates["train_params"]["scale"] = scale
     if compute_avg_loss is not None:
-        cli_updates["train_params"]["compute_avg_loss_n_epochs"] = compute_avg_loss
+        cli_updates["train_params"]["compute_avg_loss_n_iterations"] = compute_avg_loss
 
     cfg = deep_update(cfg, cli_updates)
 
@@ -91,15 +91,15 @@ def cli_train(
 # ---------- subcommand: predict ----------
 @app.command("predict")
 def cli_predict(
+    # necessary config
     config: Optional[Path] = typer.Option(None, help="YAML config file"),
     # optional overrides
-    epoch: int = typer.Option(-1, help="Epoch to load (default: latest in save_dir/model)"),
+    iterations: int = typer.Option(-1, help="Epoch to load (default: latest in save_dir/model)"),
     crop_size: Optional[int] = typer.Option(None, help="Crop size for prediction"),
     batch_size: Optional[int] = typer.Option(None, help="Batch size for prediction"),
 
     # (allow data overrides too, in case user points to a different exp)
     save_dir: Optional[Path] = typer.Option(None, help="Output/experiment directory"),
-    save_name: Optional[str] = typer.Option(None, help="Output volume name"),
     tomo0: Optional[List[str]] = typer.Option(None, help="Volume set 0"),
     tomo1: Optional[List[str]] = typer.Option(None, help="Volume set 1"),
     mask:  Optional[Path] = typer.Option(None, help="Mask file"),
@@ -134,7 +134,7 @@ def cli_predict(
     require(cfg, need)
 
     # your predict() signature: predict(config_yaml, epoch=-1, crop_size=None, batch_size=0)
-    predict(cfg, epoch=epoch, crop_size=crop_size, batch_size=(batch_size or 0), save_name=save_name)
+    predict(cfg, config_path=config, iterations=iterations, crop_size=crop_size, batch_size=(batch_size or 0), save_path=save_path)
 
 if __name__ == "__main__":
     app()

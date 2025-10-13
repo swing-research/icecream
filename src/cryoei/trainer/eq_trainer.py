@@ -79,12 +79,6 @@ class EquivariantTrainer(BaseTrainer):
     def compute_loss(self,inp_1,inp_2):
 
 
-        # Flip the eq_use_direct flag if the current epoch is in the eq_use_direct_flips list
-
-        if self.configs.use_flips_tr:
-            if self.current_epoch in self.configs.eq_use_direct_flips:
-                self.configs.eq_use_direct = not self.configs.eq_use_direct
-
         est_1, est_2 = self.get_estimates(inp_1, inp_2)
 
 
@@ -148,7 +142,7 @@ class EquivariantTrainer(BaseTrainer):
         est_2_ref = get_measurement(est_2_ref, self.wedge_ref)
 
 
-        if self.current_epoch < self.configs.miss_wedge_delay:
+        if self.current_iteration < self.configs.miss_wedge_delay:
             est_1_rot_inp = est_1_rot.clone()
             est_2_rot_inp = est_2_rot.clone()
         else:

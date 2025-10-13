@@ -211,7 +211,7 @@ class BaseTrainer:
         self.model.train()
 
         if repeats is None:
-            repeats = self.configs.epochs
+            repeats = self.configs.
         # Temperary fix for the scheduler
 
         if hasattr(self.configs, 'use_scheduler'):
@@ -240,7 +240,7 @@ class BaseTrainer:
             print("Not using mixed precision training")
             scaler = None
             autocast = None            
-        self.current_epoch = 0
+        self.current_iteration = 0
 
         disable_bar = not sys.stderr.isatty()  # keep logs clean on non-TTY (e.g., SLURM)
 
@@ -248,9 +248,9 @@ class BaseTrainer:
         ema = None
         alpha = 0.1  # EMA smoothing for display
 
-        for epoch in range(repeats):
+        for iteration in range(repeats):
             self.optimizer.zero_grad()
-            self.current_epoch = epoch
+            self.current_iteration = iteration
             data = self.vol_data.get_random_crop(self.configs.batch_size)
             inp_1= data['input_1'].to(self.device)
             inp_2 = data['input_2'].to(self.device)
@@ -277,14 +277,14 @@ class BaseTrainer:
             loss_val = float(loss.detach().item())
             ema = loss_val if ema is None else (alpha * loss_val + (1 - alpha) * ema)
             #cur_lr = self.optimizer.param_groups[0]["lr"]
-            pbar.set_postfix(epoch=epoch + 1, ema_loss=f"{ema:.4f}", loss=f"{loss_val:.4f}")
+            pbar.set_postfix(iteration=iteration + 1, ema_loss=f"{ema:.4f}", loss=f"{loss_val:.4f}")
             pbar.update(1)
-            if epoch>0 and epoch % self.configs.compute_avg_loss_n_epochs == 0:
+            if iteration>0 and iteration % self.configs.compute_avg_loss_n_iterations == 0:
                 self.compute_average_loss()
 
 
-            if epoch>0 and epoch % self.configs.save_n_epochs == 0:
-                self.save_model(epoch)
+            if iteration>0 and iteration % self.configs.save_n_iterations == 0:
+                self.save_model(iteration)
 
 
         
@@ -335,21 +335,21 @@ class BaseTrainer:
         self.equi_loss_avg_set.append(avg_equi_loss)
         print(f"Average Loss: {avg_loss}, Average Diff Loss: {avg_diff_loss}, Average Obs Loss: {avg_obs_loss}, Average Equi Loss: {avg_equi_loss}")
 
-    def save_model(self, epoch=None):
+    def save_model(self, iteration=None):
         """
         Save the model state and loss information.
         Args:
-            epoch (int): Current epoch number.
+            iteration (int): Current iteration number.
         """
 
-        if epoch is None:
-            epoch = self.configs.epochs
+        if iteration is None:
+            iteration = self.configs.iterations
         # make sure the save path exists
         model_save_path = os.path.join(self.save_path, 'model')
         if not os.path.exists(model_save_path):
             os.makedirs(model_save_path)
         # save the model state
-        model_path = os.path.join(model_save_path, f'model_epoch_{epoch}.pt')
+        model_path = os.path.join(model_save_path, f'model_iteration_{iteration}.pt')
         torch.save({
             'model_state_dict': self.model.state_dict(),
             'optimizer_state_dict': self.optimizer.state_dict(),

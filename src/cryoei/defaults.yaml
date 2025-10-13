@@ -14,7 +14,7 @@ data:
 train_params:
   device: 0 # eg. 0, 1, 2 for GPU or -1 for CPU or "cuda:0", "cuda:1"  and 'cpu' for CPU
   input_crop_size: 72
-  epochs: 50000
+  iterations: 50000
   scale: 2.0
   miss_wedge_delay: 0
   batch_size: 8 # Change this if doesnt fit in memory
@@ -24,8 +24,8 @@ train_params:
   ref_wedge_support: 1
   wedge_double_size: true
   n2n_eq: true
-  save_n_epochs: 5000
-  compute_avg_loss_n_epochs: 1000
+  save_n_iterations: 5000
+  compute_avg_loss_n_iterations: 1000
   use_flips: true
   normalize_crops: false
   use_inp_wedge: false
@@ -48,7 +48,6 @@ train_params:
   eq_use_direct: false
   eq_real_correction: true
   min_distance: 0.5
-  use_flips_tr: false
   window_type: "boxcar"
 
 predict_params:

@@ -989,3 +989,21 @@ def upsample_fourier_rfft2x(x: torch.Tensor) -> torch.Tensor:
     # 7) Inverse rFFT to get the upsampled real grid
     y = torch.fft.irfftn(Z, s=(Ox, Oy, Oz), dim=(0,1,2)).real
     return y
+
+
+def combine_names(vol_1,vol_2):
+    """
+    Combine the names of two volumes to create a unique identifier for the pair.
+    """
+    name_1 = vol_1.split('/')[-1].split('.mrc')[0]
+    name_2 = vol_2.split('/')[-1].split('.mrc')[0]
+
+    if name_1 < name_2:
+        combined_name = name_1 + '_' + name_2
+    else:
+        combined_name = name_2 + '_' + name_1
+
+    # add ei as the suffix
+    combined_name = combined_name + '_ei'
+
+    return combined_name+'.mrc'

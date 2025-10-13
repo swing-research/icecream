@@ -15,12 +15,13 @@ import yaml
 
 from .models import get_model
 from .trainer import EquivariantTrainer
+from .utils.utils import combine_names
 
 
-def get_latest_epoch(model_path):
+def get_latest_iteration(model_path):
     """
-    Get the latest epoch number from the model path.
-    Assumes the model files are named as 'model_epoch_{epoch}.pth'.
+    Get the latest iteration number from the model path.
+    Assumes the model files are named as 'model_iteration_{iteration}.pth'.
     """
     if not os.path.exists(model_path):
         raise FileNotFoundError(f"Model path does not exist: {model_path}")
@@ -29,23 +30,25 @@ def get_latest_epoch(model_path):
     files = os.listdir(model_path)
     
     # Filter for files that match the pattern
-    epoch_files = [f for f in files if f.startswith('model_epoch_') and f.endswith('.pt')]
-    
-    if not epoch_files:
-        return -1  # No epochs found
+    iteration_files = [f for f in files if f.startswith('model_iteration_') and f.endswith('.pt')]
 
-    # Extract epoch numbers and find the maximum
-    epochs = [int(f.split('_')[-1].split('.')[0]) for f in epoch_files]
-    
-    return max(epochs)
+    if not iteration_files:
+        return -1  # No iterations found
 
-def predict(config_yaml,epoch=-1,crop_size=None,batch_size=0, save_name=None):
+    # Extract iteration numbers and find the maximum
+    iterations = [int(f.split('_')[-1].split('.')[0]) for f in iteration_files]
+
+    return max(iterations)
+
+def predict(config_yaml, config_path, iteration=-1, crop_size=None, batch_size=0, save_path=None):
 
     configs = SimpleNamespace(**config_yaml)
 
     data_config = SimpleNamespace(**configs.data)
 
-    save_path = data_config.save_dir
+
+    # if explicit save path is not given, save in the folder containing the config file
+    save_path = config_path.parent if save_path is None else save_path
 
     # create save directory if it does not exist
     if not os.path.exists(save_path):
@@ -97,12 +100,12 @@ def predict(config_yaml,epoch=-1,crop_size=None,batch_size=0, save_name=None):
     # save model parameters to a json file
     model_path = os.path.join(save_path,'model')
 
-    vol_est_name = 'vol_est'
-
-    if save_name is not None:
-        vol_est_name = save_name
-    if epoch != -1:
-        vol_est_name += f'_epoch_{epoch}'
+    save_name = combine_names(path_1,path_2).split('.mrc')[0]
+    
+    
+    vol_est_name = save_name
+    if iteration != -1:
+        vol_est_name += f'_iteration_{iteration}'
 
     if batch_size !=0:
         print(f"Using batch size: {batch_size}")
@@ -121,13 +124,13 @@ def predict(config_yaml,epoch=-1,crop_size=None,batch_size=0, save_name=None):
 
     vol_est_name += '.mrc'
 
-    if epoch ==-1:
-        epoch = get_latest_epoch(model_path)
+    if iteration == -1:
+        iteration = get_latest_iteration(model_path)
 
-    if epoch == -1:
+    if iteration == -1:
         raise ValueError(f"No saved model found in {model_path}")
 
-    model_path = os.path.join(model_path, f'model_epoch_{epoch}.pt')
+    model_path = os.path.join(model_path, f'model_iteration_{iteration}.pt')
 
     # Load the model weights
     trainer.load_model(model_path)
@@ -151,9 +154,11 @@ def predict(config_yaml,epoch=-1,crop_size=None,batch_size=0, save_name=None):
 
 def main(
     config: Optional[Path] = typer.Option(None, "--config", "-c", help="Path to YAML config file"),
-    epoch: int = typer.Option(-1, help="Epoch to load the model from"),
+    iteration: int = typer.Option(-1, help="Iteration to load the model from"),
     crop_size: Optional[int] = typer.Option(None, help="Crop size for the tomograms"),
     batch_size: Optional[int] = typer.Option(None, help="Batch size for prediction"),
+    save_path: Optional[str] = typer.Option(None, help="Path to save the predicted volume")
+
 ):
     """Entry point replacing the old argparse interface."""
 
@@ -163,13 +168,15 @@ def main(
             config_dict = yaml.safe_load(f) or {}
 
     typer.echo(config_dict)
-    typer.echo(f"epoch: {epoch}")
+    typer.echo(f"iteration: {iteration}")
     typer.echo(f"crop_size: {crop_size}")
     typer.echo(f"batch_size: {batch_size}")
 
     predict(
         config_dict,
-        epoch=epoch,
+        config_path=config,
+        save_path=save_path,
+        iteration=iteration,
         crop_size=crop_size,
         batch_size=batch_size or 0,
     )
