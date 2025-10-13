@@ -63,6 +63,14 @@ def predict(config_yaml, config_path, iteration=-1, crop_size=None, batch_size=0
     mask_path = data_config.mask_file
 
 
+
+    # Throw not implemented error if path_1 or path_2 has more than one volume
+    if isinstance(path_1, list) and len(path_1) > 1:
+        raise NotImplementedError("Multiple volumes not supported yet.")
+    if isinstance(path_2, list) and len(path_2) > 1:
+        raise NotImplementedError("Multiple volumes not supported yet.")
+
+
     # if configs.data has an attribute called 'angles', use it, otherwise set to None
     angle_file = getattr(data_config, 'angle_file', None)
     if angle_file is not None:
@@ -100,9 +108,9 @@ def predict(config_yaml, config_path, iteration=-1, crop_size=None, batch_size=0
     # save model parameters to a json file
     model_path = os.path.join(save_path,'model')
 
-    save_name = combine_names(path_1,path_2).split('.mrc')[0]
-    
-    
+    save_name = combine_names(path_1[0],path_2[0]).split('.mrc')[0]
+
+
     vol_est_name = save_name
     if iteration != -1:
         vol_est_name += f'_iteration_{iteration}'

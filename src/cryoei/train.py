@@ -48,6 +48,12 @@ def train_model(config_yaml):
     path_2 = data_config.tomo1_files
     mask_path = data_config.mask_file
 
+    # Throw not implemented error if path_1 or path_2 has more than one volume
+    if isinstance(path_1, list) and len(path_1) > 1:
+        raise NotImplementedError("Multiple volumes not supported yet.")
+    if isinstance(path_2, list) and len(path_2) > 1:
+        raise NotImplementedError("Multiple volumes not supported yet.")
+
 
     # if configs.data has an attribute called 'angles', use it, otherwise set to None
     angle_file = getattr(data_config, 'angle_file', None)
@@ -105,7 +111,7 @@ def train_model(config_yaml):
     #vol_est = trainer.predict(**configs.predict_params)
     vol_est = trainer.predict_dir(**configs.predict_params)
 
-    name = combine_names(path_1, path_2)
+    name = combine_names(path_1[0], path_2[0])
     print(f"Volume names: {name}")
 
 
