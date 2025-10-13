@@ -90,6 +90,6 @@ cryoei predict  --config /path/to/config.json \
   --tomo0 /path/to/tomogram_0.mrc \
   --tomo1 /path/to/tomogram_1.mrc \
   --angles /path/to/angles.tlt \
-  --save-name my_reconstruction \
-  --epoch 50 \  # epoch to use for reconstruction (optional)
+  --save_dir /path/to/save/dir \  # directory to save output if  different from training (optional)
+  --iteration 5000 \  # iteration to use for reconstruction (optional)
 ```
