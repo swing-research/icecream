@@ -211,7 +211,7 @@ class BaseTrainer:
         self.model.train()
 
         if repeats is None:
-            repeats = self.configs.
+            repeats = self.configs.iterations
         # Temperary fix for the scheduler
 
         if hasattr(self.configs, 'use_scheduler'):
