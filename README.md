@@ -1,4 +1,4 @@
-# cryoei
+# icecream
 Self-supervised method for cryo-et reconstruction using noise2noise and equivariant imaging
 
 ## Installation
@@ -6,16 +6,16 @@ Self-supervised method for cryo-et reconstruction using noise2noise and equivari
 Clone the repository:
 
 ```bash
-git clone git@github.com:vinith2/cryoei.git
-cd cryoei
+git clone git@github.com:vinith2/icecream.git
+cd icecream
 ```
 
 Create a conda environment or you can use other environment managers like pipenv, poetry, uv etc with python 3.11 or above. We will use conda
 with python 3.11 in this example:
 
 ```bash
-conda create -n cryoei python=3.11 -y
-conda activate cryoei
+conda create -n icecream python=3.11 -y
+conda activate icecream
 ```
 Install cuda enabled pytorch from https://pytorch.org/get-started/locally/ based on your system configuration. For example, for linux with cuda 12.8
 
@@ -23,7 +23,7 @@ Install cuda enabled pytorch from https://pytorch.org/get-started/locally/ based
 pip install torch  --index-url https://download.pytorch.org/whl/cu128
 ``` 
 
-Install cryoei and its dependencies:
+Install icecream and its dependencies:
 
 ```bash
 pip install -e .
@@ -31,7 +31,7 @@ pip install -e .
 To test the installation, run:
 
 ```bash
-cryoei --help
+icecream --help
 ```
 It should display the two main commands: `train` and `predict`.
 
@@ -41,12 +41,12 @@ It should display the two main commands: `train` and `predict`.
 To train the model, use the `train` command. Note the the command also reconstruct the volume after training. Howeve, you can use the `predict` command to reconstruct the volume from a trained model using intermediate checkpoints.
 
 
-To train the model you can use a config file or directly pass the parameters through command line. This uses the default training parameters specified in `src/cryoei/default.yaml`. You can override these by passing  a config file of your own. 
+To train the model you can use a config file or directly pass the parameters through command line. This uses the default training parameters specified in `src/icecream/default.yaml`. You can override these by passing  a config file of your own. 
 
 Now, we show how to train the model using default parameters. 
 
 ```bash
-cryoei train \
+icecream train \
   --tomo0 /path/to/tomogram_0.mrc \
   --tomo1 /path/to/tomogram_1.mrc \
   --angles /path/to/angles.tlt \
@@ -57,9 +57,9 @@ cryoei train \
 This will train the model using the two tomograms `tomogram_0.mrc` and `tomogram_1.mrc` with tilt angles specified in `angles.tlt`. The reconstructions will be saved in the directory `/path/to/save/dir` along with the 'config.json' file containing the training and model parameters. The actual model files will be save in `/path/to/save/dir/models`. The training batch size is set to 8. You can change other training parameters like number of epochs,scale etc. 
 
 
-To train the model using a config file, create a yaml file with the contents similar to `src/cryoei/defaults.yaml` and pass it to the `--config` option. 
+To train the model using a config file, create a yaml file with the contents similar to `src/icecream/defaults.yaml` and pass it to the `--config` option. 
 ```bash
-cryoei train --config /path/to/config.yaml
+icecream train --config /path/to/config.yaml
 ```
 
 In your config file, make sure to update the  `data` section with the correct tomogram paths and angle information. For example:
@@ -87,7 +87,7 @@ data:
 To reconstruct the volume from a trained model, use the `predict` command. You can specify the epoch of the model to use for reconstruction. If not specified, it will use the latest epoch.
 
 ```bash
-cryoei predict  --config /path/to/config.json \
+icecream predict  --config /path/to/config.json \
   --tomo0 /path/to/tomogram_0.mrc \
   --tomo1 /path/to/tomogram_1.mrc \
   --angles /path/to/angles.tlt \
@@ -95,4 +95,3 @@ cryoei predict  --config /path/to/config.json \
   --iteration 5000 \  # iteration to use for reconstruction (optional)
 ```
 Note that the `config.json` file is generate during training and contains the model and training parameters and saved in the training save directory. You can also use a yaml config file instead of json. 
-

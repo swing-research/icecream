@@ -4,7 +4,7 @@ from pathlib import Path
 from typing import Optional, List, Dict, Any
 
 from .train import train_model
-from .predict import predict  # put your predict() in src/cryoei/predict.py
+from .predict import predict  # put your predict() in src/icecream/predict.py
 
 app = typer.Typer(add_completion=False, help="Cryo-ET training & prediction CLI")
 

@@ -7,8 +7,8 @@ import torch
 import numpy as np
 from math import sqrt
 from .base_trainer import BaseTrainer
-from cryoei.utils.utils import batch_rot_4vol, batch_rot_wedge_full_4vols,crop_vol,fourier_loss, fourier_loss_batch,get_measurement,get_measurement_multi_wedge
-from cryoei.utils.utils import symmetrize_3D
+from icecream.utils.utils import batch_rot_4vol, batch_rot_wedge_full_4vols,crop_vol,fourier_loss, fourier_loss_batch,get_measurement,get_measurement_multi_wedge
+from icecream.utils.utils import symmetrize_3D
 
 class EquivariantTrainer(BaseTrainer):
     """

@@ -13,13 +13,13 @@ def get_model(name,  **kwargs):
         torch.nn.Module: The initialized model.
     """
     if name == 'unet3d':
-        from cryoei.models.unet3d import UNet3D 
+        from icecream.models.unet3d import UNet3D 
         return UNet3D(**kwargs)
     if name == 'unet3d_bf':
-        from cryoei.models.unet3d_bf import UNet3D
+        from icecream.models.unet3d_bf import UNet3D
         return UNet3D(**kwargs)
     elif name == 'iso_unet3d':
-        from cryoei.models.iso_unet import Unet3D as iso_Unet3D
+        from icecream.models.iso_unet import Unet3D as iso_Unet3D
         return iso_Unet3D(**kwargs)
     else:
         raise ValueError(f"Model {name} is not recognized.")

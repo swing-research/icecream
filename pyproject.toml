@@ -1,5 +1,5 @@
 [project]
-name = "cryoei"
+name = "icecream"
 version = "0.1.0"
 requires-python = ">=3.11"
 description = "Cryo-ET training & prediction CLI"
@@ -18,4 +18,4 @@ dependencies = [
 ]
 
 [project.scripts]
-cryoei = "cryoei.cli:app"
+icecream = "icecream.cli:app"
