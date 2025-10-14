@@ -54,7 +54,8 @@ cryoei train \
   --batch-size 8
 ```
 
-This will train the model using the two tomograms `tomogram_0.mrc` and `tomogram_1.mrc` with tilt angles specified in `angles.tlt`. The trained model and reconstructions will be saved in `/path/to/save/dir`. The training batch size is set to 8. You can change other training parameters like number of epochs,scale etc.
+This will train the model using the two tomograms `tomogram_0.mrc` and `tomogram_1.mrc` with tilt angles specified in `angles.tlt`. The reconstructions will be saved in the directory `/path/to/save/dir` along with the 'config.json' file containing the training and model parameters. The actual model files will be save in `/path/to/save/dir/models`. The training batch size is set to 8. You can change other training parameters like number of epochs,scale etc. 
+
 
 To train the model using a config file, create a yaml file with the contents similar to `src/cryoei/defaults.yaml` and pass it to the `--config` option. 
 ```bash
@@ -93,3 +94,5 @@ cryoei predict  --config /path/to/config.json \
   --save_dir /path/to/save/dir \  # directory to save output if  different from training (optional)
   --iteration 5000 \  # iteration to use for reconstruction (optional)
 ```
+Note that the `config.json` file is generate during training and contains the model and training parameters and saved in the training save directory. You can also use a yaml config file instead of json. 
+
