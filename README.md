@@ -95,3 +95,7 @@ icecream predict  --config /path/to/config.json \
   --iteration 5000 \  # iteration to use for reconstruction (optional)
 ```
 Note that the `config.json` file is generate during training and contains the model and training parameters and saved in the training save directory. You can also use a yaml config file instead of json. 
+
+
+## License
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details
