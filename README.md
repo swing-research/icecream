@@ -6,7 +6,7 @@ Self-supervised method for cryo-et reconstruction using noise2noise and equivari
 Clone the repository:
 
 ```bash
-git clone git@github.com:vinith2/icecream.git
+git clone git@github.com:swing-research/icecream.git
 cd icecream
 ```
 
