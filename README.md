@@ -5,7 +5,7 @@ Official repo for icecream ([paper](https://www.biorxiv.org/content/10.1101/2025
 Self-supervised method for cryo-et reconstruction using noise2noise and equivariant imaging
 
 ### 🧊 Note
-The codebase is currently under active development. The base version supports training on a single split of the tomograms. Upcoming updates will include support for multiple volume splits and pre-trained model usage, along with code cleanup and documentation improvements.
+The codebase is under active development. The current version supports training on a single split of the tomograms. Upcoming updates will include support for multiple volume splits and pre-trained model usage, along with code cleanup and documentation improvements.
 
 
 
