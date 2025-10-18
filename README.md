@@ -1,5 +1,13 @@
-# icecream
+# Icecream: High-Fidelity Equivariant Cryo-Electron Tomography
+
+Official repo for icecream ([[paper]](https://www.biorxiv.org/content/10.1101/2025.10.17.682746v1))
+
 Self-supervised method for cryo-et reconstruction using noise2noise and equivariant imaging
+
+### 🧊 Note
+The codebase is currently under active development. The base version supports training on a single split of the tomograms. Upcoming updates will include support for multiple volume splits and pre-trained model usage, along with code cleanup and documentation improvements.
+
+
 
 ## Installation
 
