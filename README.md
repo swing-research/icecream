@@ -1,4 +1,4 @@
-# Icecream: High-Fidelity Equivariant Cryo-Electron Tomography
+# 🍦 Icecream: High-Fidelity Equivariant Cryo-Electron Tomography
 
 Official repo for icecream ([paper](https://www.biorxiv.org/content/10.1101/2025.10.17.682746v1))
 
