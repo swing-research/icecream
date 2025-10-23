@@ -11,6 +11,9 @@ The codebase is under active development.
 
 #### Updates 
 Date: 23.10.2025
+ - Added save_tomo_n_iterations, to compute and save the current reconstruction during training
+ - Added the command line split-tilt-series to split a tilt series along the angle dimension.
+ - Added comments on the parameters of the default yaml file
  - Code cleanup. 
  - Added support to use a pre-trained model as initialization during training. 
  - Added an option for torch.compile.
