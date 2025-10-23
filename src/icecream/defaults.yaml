@@ -16,38 +16,26 @@ train_params:
   input_crop_size: 72
   iterations: 50000
   scale: 2.0
-  miss_wedge_delay: 0
   batch_size: 8 # Change this if doesnt fit in memory
+  seed: 42
+  compile: false # speed up training(but will take some time initially to compile and throws lots of warnings)
   use_fourier: false
   use_spherical_support: true
   wedge_low_support: 0
   ref_wedge_support: 1
   wedge_double_size: true
-  n2n_eq: true
   save_n_iterations: 5000
   compute_avg_loss_n_iterations: 1000
   use_flips: true
   normalize_crops: false
   use_inp_wedge: false
-  do_rot_90_fraction: 0.5
   learning_rate: 1e-4
   use_mixed_precision: true
-  repeat_runs: true
-  detach_estimates: false
   no_window: false
-  no_n2n_window: true
   view_as_real: true
-  use_rotated_obs_loss: false
-  obs_rot_scale: 1.0
-  detach_reference: false
-  use_scheduler: false
-  scheduler_milestones: 
-    - 10000
-    - 150000
   upsample_volume: false
   eq_use_direct: false
-  eq_real_correction: true
-  min_distance: 0.5
+  min_distance: 0.5 # related to choosing the different rotations of the volume 
   window_type: "boxcar"
 
 predict_params:

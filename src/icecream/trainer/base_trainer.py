@@ -207,30 +207,11 @@ class BaseTrainer:
 
         return est_1, est_2
 
-    def train(self,repeats =None):
+    def train(self,iterations =None):
         self.model.train()
 
-        if repeats is None:
-            repeats = self.configs.iterations
-        # Temperary fix for the scheduler
-
-        if hasattr(self.configs, 'use_scheduler'):
-            if self.configs.use_scheduler:
-                # print("Using cosine scheduler with warmup") 
-                # lr_scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(self.optimizer, T_max=repeats)
-                # warmup_scheduler = warmup.UntunedLinearWarmup(self.optimizer)
-                print("Using multistep scheduler")
-                lr_scheduler = torch.optim.lr_scheduler.MultiStepLR(self.optimizer, 
-                                                                    milestones=self.configs.scheduler_milestones, 
-                                                                    )
-                self.use_scheduler = True
-
-            else:
-                print("Scheduler not used")
-                self.use_scheduler = False
-        else:
-
-            self.use_scheduler = False
+        if iterations is None:
+            iterations = self.configs.iterations
 
         if self.configs.use_mixed_precision:
             print("Using mixed precision training")
@@ -242,13 +223,18 @@ class BaseTrainer:
             autocast = None            
         self.current_iteration = 0
 
+        if hasattr(self.configs, 'compile'):
+            if self.configs.compile:
+                print("Compiling the model")
+                self.model = torch.compile(self.model, mode='max-autotune', fullgraph=True)
+
         disable_bar = not sys.stderr.isatty()  # keep logs clean on non-TTY (e.g., SLURM)
 
-        pbar = tqdm(total=repeats, desc="Training", dynamic_ncols=True, disable=disable_bar)
+        pbar = tqdm(total=iterations, desc="Training", dynamic_ncols=True, disable=disable_bar)
         ema = None
         alpha = 0.1  # EMA smoothing for display
 
-        for iteration in range(repeats):
+        for iteration in range(iterations):
             self.optimizer.zero_grad()
             self.current_iteration = iteration
             data = self.vol_data.get_random_crop(self.configs.batch_size)
@@ -268,12 +254,6 @@ class BaseTrainer:
                 loss.backward()
                 self.optimizer.step()
     
-            if self.use_scheduler:
-                print("Stepping the scheduler")
-                lr_scheduler.step()
-                # with warmup_scheduler.dampening():
-                #     lr_scheduler.step()
-
             loss_val = float(loss.detach().item())
             ema = loss_val if ema is None else (alpha * loss_val + (1 - alpha) * ema)
             #cur_lr = self.optimizer.param_groups[0]["lr"]

@@ -5,7 +5,18 @@ Official repo for icecream ([paper](https://www.biorxiv.org/content/10.1101/2025
 Self-supervised method for cryo-et reconstruction using noise2noise and equivariant imaging
 
 ### 🧊 Note
-The codebase is under active development. The current version supports training on a single split of the tomograms. Upcoming updates will include support for multiple volume splits and pre-trained model usage, along with code cleanup and documentation improvements.
+The codebase is under active development. 
+
+#### Updates 
+Date: 23.10.2025
+ - Code cleanup 
+ - Added support use pre-trained model as initialization during training 
+ - Added option for torch.compile
+
+
+The current version supports training on a single split of the tomograms.  
+Upcoming updates will include support for **multi-volume training**.
+
 
 
 
@@ -65,6 +76,20 @@ icecream train \
 This will train the model using the two tomograms `tomogram_0.mrc` and `tomogram_1.mrc` with tilt angles specified in `angles.tlt`. The reconstructions will be saved in the directory `/path/to/save/dir` along with the 'config.json' file containing the training and model parameters. The actual model files will be save in `/path/to/save/dir/models`. The training batch size is set to 8. You can change other training parameters like number of epochs,scale etc. 
 
 
+### Using a pre-trained model for initialization
+You can optionally initialize the weights of the model using a pre-trained model. This can help in faster convergence. To do this, use the `--pretrain-path` option to specify the path to the pre-trained model file (.pt file). Note that the pre-trained model should be compatible with the current model architecture.
+
+```bash
+icecream train \
+  --tomo0 /path/to/tomogram_0.mrc \
+  --tomo1 /path/to/tomogram_1.mrc \
+  --angles /path/to/angles.tlt \
+  --save-dir /path/to/save/dir \
+  --batch-size 8 \
+  --pretrain-path /path/to/pretrained_model.pt
+```
+
+
 To train the model using a config file, create a yaml file with the contents similar to `src/icecream/defaults.yaml` and pass it to the `--config` option. 
 ```bash
 icecream train --config /path/to/config.yaml
@@ -100,7 +125,7 @@ icecream predict  --config /path/to/config.json \
   --tomo1 /path/to/tomogram_1.mrc \
   --angles /path/to/angles.tlt \
   --save_dir /path/to/save/dir \  # directory to save output if  different from training (optional)
-  --iteration 5000 \  # iteration to use for reconstruction (optional)
+  --iteration 50000 \  # iteration to use for reconstruction (optional)
 ```
 Note that the `config.json` file is generate during training and contains the model and training parameters and saved in the training save directory. You can also use a yaml config file instead of json. 
 

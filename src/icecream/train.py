@@ -20,6 +20,15 @@ from .utils.utils import combine_names
 
 def train_model(config_yaml):
 
+    # Reproducibility
+    seed = config_yaml.get('train_params', {}).get('seed', 42)
+    torch.manual_seed(seed)
+    np.random.seed(seed)
+
+    torch.backends.cudnn.deterministic = True
+    #torch.backends.cudnn.benchmark = False
+
+
 
 
     configs = SimpleNamespace(**config_yaml)
@@ -86,10 +95,11 @@ def train_model(config_yaml):
                                 save_path=save_path
                                 )
     
+    print("Loading data...")
     trainer.load_data(vol_paths_1=path_1,
                     vol_paths_2=path_2, 
                     vol_mask_path=mask_path, **configs.mask_params)
-    
+    print("Data loaded.")
 
     if hasattr(configs, 'pretrain_params'):
         pretrain_params = SimpleNamespace(**configs.pretrain_params)
@@ -103,16 +113,15 @@ def train_model(config_yaml):
             else:
                 print("No pretrained model path provided, training from scratch.")
     
-    trainer.train(repeats=train_config.iterations)
+    trainer.train(iterations=train_config.iterations)
 
     trainer.save_model(iteration=train_config.iterations)
 
     # Evaluate the model
-    #vol_est = trainer.predict(**configs.predict_params)
     vol_est = trainer.predict_dir(**configs.predict_params)
 
     name = combine_names(path_1[0], path_2[0])
-    print(f"Volume names: {name}")
+    print(f"Volume name: {name}")
 
 
     # Save the estimated volume

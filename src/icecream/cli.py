@@ -58,6 +58,7 @@ def cli_train(
     iterations: Optional[int] = typer.Option(None, help="Number of iterations"),
     save_n_iterations: Optional[int] = typer.Option(None, help="Checkpoint every N iterations"),
     compute_avg_loss: Optional[int] = typer.Option(None, help="Average loss every N iterations"),
+    pretrain_path: Optional[Path] = typer.Option(None, help="Pretrained model path (location to .pt file)"),
 ):
     cfg = load_defaults()
     if config:
@@ -78,6 +79,12 @@ def cli_train(
     if scale is not None: cli_updates["train_params"]["scale"] = scale
     if compute_avg_loss is not None:
         cli_updates["train_params"]["compute_avg_loss_n_iterations"] = compute_avg_loss
+
+    if pretrain_path is not None:
+        cli_updates["pretrain_params"] = {
+            "use_pretrain": True,
+            "model_path": str(pretrain_path)
+        }
 
     cfg = deep_update(cfg, cli_updates)
 

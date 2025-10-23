@@ -47,7 +47,6 @@ class EquivariantTrainer(BaseTrainer):
 
 
         self.window = self.initialize_window(self.crop_size_eq)
-        self.window_n2n = self.initialize_window(self.crop_size_eq)
 
         self.wedge_ref = self.initialize_wedge(self.crop_size_eq, 
                                                wedge_support=self.configs.ref_wedge_support)[:-1,:-1,:-1]
@@ -57,28 +56,16 @@ class EquivariantTrainer(BaseTrainer):
 
 
         #self.window = None
-
         if self.configs.no_window:
             print('No window applied')
             self.window = None
             self.window_input = None
 
-        if self.configs.no_n2n_window:
-            print('No N2N window applied')
-            self.window_n2n = None
-
-        theta = torch.zeros(1,3,4)
-        theta[:,:,:3] = torch.eye(3)
-        self.grid = torch.nn.functional.affine_grid(theta, (1,1,self.crop_size,
-                                                            self.crop_size,
-                                                            self.crop_size), align_corners=False).to(self.device)
-
-
     
 
     def compute_loss(self,inp_1,inp_2):
 
-
+    
         est_1, est_2 = self.get_estimates(inp_1, inp_2)
 
 
@@ -96,91 +83,48 @@ class EquivariantTrainer(BaseTrainer):
                                                         view_as_real=self.configs.view_as_real,
                                                         window=self.window_input)
 
-
-        if self.configs.detach_estimates:
-            est_1 = est_1.detach()
-            est_2 = est_2.detach()
             
         est_1_rot, est_2_rot, inp_1_rot, inp_2_rot, wedge_rot = batch_rot_4vol(est_1,est_2, inp_1, inp_2, k_sets=self.k_sets,wedge=self.wedge_full)
 
         wedge_rot = wedge_rot[:,:-1,:-1,:-1]  # remove last row, column and slice to make it odd sized
 
-        if self.configs.eq_real_correction:
-            wedge_rot = self.get_real_binary_filters_batch(wedge_rot)
-
-
-
-
-        if self.configs.use_rotated_obs_loss:
-            obs_rot_loss = fourier_loss_batch(inp_2_rot, est_1_rot,
-                            wedge_rot, 
-                            self.criteria,
-                            use_fourier=self.configs.use_fourier,
-                            view_as_real=self.configs.view_as_real,
-                            window=self.window) + fourier_loss_batch(inp_1_rot,
-                                                    est_2_rot,
-                                                    wedge_rot,
-                                                    self.criteria,
-                                                    use_fourier=self.configs.use_fourier,
-                                                    view_as_real=self.configs.view_as_real,
-                                                    window=self.window)
-            
-            obs_loss = obs_loss + obs_rot_loss*self.configs.obs_rot_scale
-        else:
-            obs_rot_loss = 0
-
-
+        # make the rotated wedge positive semidefinite
+        wedge_rot = self.get_real_binary_filters_batch(wedge_rot)
 
         est_1_ref = est_1_rot.clone()
         est_2_ref = est_2_rot.clone()
 
-        if self.configs.detach_reference:
-            est_1_ref = est_1_ref.detach()
-            est_2_ref = est_2_ref.detach()
 
         est_1_ref = get_measurement(est_1_ref, self.wedge_ref)
         est_2_ref = get_measurement(est_2_ref, self.wedge_ref)
 
 
-        if self.current_iteration < self.configs.miss_wedge_delay:
-            est_1_rot_inp = est_1_rot.clone()
-            est_2_rot_inp = est_2_rot.clone()
-        else:
-            # if we are past the miss wedge delay, we use the reference wedge for the rotated
-            est_1_rot_inp = get_measurement(est_1_rot, self.wedge_input)
-            est_2_rot_inp = get_measurement(est_2_rot, self.wedge_input)
+
+        # Apply wedge to rotated estimates
+        est_1_rot_inp = get_measurement(est_1_rot, self.wedge_input)
+        est_2_rot_inp = get_measurement(est_2_rot, self.wedge_input)
 
 
         est_1_rot_est, est_2_rot_est = self.get_estimates(est_1_rot_inp, est_2_rot_inp)
-
-
-
-
-        if self.configs.n2n_eq:
-            if self.configs.eq_use_direct:
-                equi_loss_est = (self.criteria(est_2_ref, est_1_rot_est) + self.criteria(est_1_ref, est_2_rot_est))* self.configs.scale
-            else:
-                equi_loss_est = (fourier_loss_batch(est_2_ref,est_1_rot_est,
-                                wedge_rot, 
-                                self.criteria,
-                                use_fourier=self.configs.use_fourier,
-                                view_as_real=self.configs.view_as_real,
-                                window=self.window) + fourier_loss_batch(est_1_ref,
-                                                        est_2_rot_est, 
-                                                        wedge_rot, 
-                                                        self.criteria,
-                                                        use_fourier=self.configs.use_fourier,
-                                                        view_as_real=self.configs.view_as_real,
-                                                        window=self.window))*self.configs.scale
+    
+        if self.configs.eq_use_direct:
+            equi_loss_est = (self.criteria(est_2_ref, est_1_rot_est) + self.criteria(est_1_ref, est_2_rot_est))* self.configs.scale
         else:
-            equi_loss_est = 0      
+            equi_loss_est = (fourier_loss_batch(est_2_ref,est_1_rot_est,
+                            wedge_rot, 
+                            self.criteria,
+                            use_fourier=self.configs.use_fourier,
+                            view_as_real=self.configs.view_as_real,
+                            window=self.window) + fourier_loss_batch(est_1_ref,
+                                                    est_2_rot_est, 
+                                                    wedge_rot, 
+                                                    self.criteria,
+                                                    use_fourier=self.configs.use_fourier,
+                                                    view_as_real=self.configs.view_as_real,
+                                                    window=self.window))*self.configs.scale
 
 
-
-        loss = obs_loss + equi_loss_est 
-
-
-
+        loss = obs_loss + equi_loss_est
         equi_loss = equi_loss_est
 
         with torch.no_grad():
