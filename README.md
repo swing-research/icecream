@@ -1,24 +1,22 @@
 # 🍦 Icecream: High-Fidelity Equivariant Cryo-Electron Tomography
 
-Official repo for icecream ([paper](https://www.biorxiv.org/content/10.1101/2025.10.17.682746v1))
+Official repo for ([icecream](https://www.biorxiv.org/content/10.1101/2025.10.17.682746v1)).
 
-Self-supervised method for cryo-et reconstruction using noise2noise and equivariant imaging
+
+Icecream is a self-supervised framework for cryo-ET reconstruction that integrates equivariance principles from modern imaging theory into a deep-learning architecture.
+Icecream provides a theoretically grounded and computationally efficient method that jointly performs denoising and missing-wedge correction.  
 
 ### 🧊 Note
 The codebase is under active development. 
 
 #### Updates 
 Date: 23.10.2025
- - Code cleanup 
- - Added support use pre-trained model as initialization during training 
- - Added option for torch.compile
-
+ - Code cleanup. 
+ - Added support to use pre-trained model as initialization during training. 
+ - Added option for torch.compile.
 
 The current version supports training on a single split of the tomograms.  
 Upcoming updates will include support for **multi-volume training**.
-
-
-
 
 ## Installation
 
@@ -100,18 +98,18 @@ In your config file, make sure to update the  `data` section with the correct to
 ```yaml
 data:
   save_dir: "runs/my_experiment/"   # directory to save outputs
-  tomo0_files: 
+  tomo0: 
     - "/path/to/tomogram_0.mrc"  # first tomogram
-  tomo1_files: 
+  tomo1: 
     - "/path/to/tomogram_1.mrc"  # second tomogram
-  mask_file: null  # optional mask file
+  mask: null  # optional mask file
 
   # Option 1: specify tilt range
   # tilt_max: 57.1
   # tilt_min: -60.0
 
   # Option 2: specify an external angle file (recommended)
-  angle_file: "/path/to/angles.tlt"
+  angles: "/path/to/angles.tlt"
 ```
 
 **Note:** The train command also reconstructs the volume after training. However, you can use the `predict` command to reconstruct the volume from a trained model using intermediate checkpoints.

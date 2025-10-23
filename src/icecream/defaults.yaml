@@ -1,67 +1,61 @@
 data:
-  save_dir: "runs/default/"
-  tomo0_files: []
-  tomo1_files: []
-  # Optional there is an inbuilt mask generator as well
-  mask_file: null
-   # Option 1: use tilt_min and tilt_max
-  #tilt_max: 57.1
-  #tilt_min: -60.0
-  # Option 2: use angle_file instead (comment above lines)
-  angle_file: null
-
+  tomo0: [] # path to the first set of tomograms, they should be in the same order as in tomo1.
+  tomo1: [] # path to the second set of tomograms, they should be in the same order as in tomo1.
+  save_dir: "runs/default/" # path where to save the results and training infos.
+  mask: null # Path to the mask of the missing wedge in Fourier. By default, it is created from the tilt information.
+  tilt_max: 60.0 # Minimum tilt angle in degrees. Default is -60.
+  tilt_min: -60.0 # Maximum tilt angle in degrees. Default is +60.
+  angles: null # Path to the tilt angle file. Valid extension include '.txt' and '.tlt'.
 
 train_params:
-  device: 0 # eg. 0, 1, 2 for GPU or -1 for CPU or "cuda:0", "cuda:1"  and 'cpu' for CPU
-  input_crop_size: 72
-  iterations: 50000
-  scale: 2.0
-  batch_size: 8 # Change this if doesnt fit in memory
-  seed: 42
-  compile: false # speed up training(but will take some time initially to compile and throws lots of warnings)
-  use_fourier: false
-  use_spherical_support: true
-  wedge_low_support: 0
-  ref_wedge_support: 1
-  wedge_double_size: true
-  save_n_iterations: 5000
-  compute_avg_loss_n_iterations: 1000
-  use_flips: true
-  normalize_crops: false
-  use_inp_wedge: false
-  learning_rate: 1e-4
-  use_mixed_precision: true
-  no_window: false
-  view_as_real: true
-  upsample_volume: false
-  eq_use_direct: false
-  min_distance: 0.5 # related to choosing the different rotations of the volume 
-  window_type: "boxcar"
+  device: 0 # GPU number or device name. Only a single GPU is supported at the moment.
+  crop_size: 72 # Size of the sub-tomograms extracted to train. Only cubic sub-tomograms are allowed.
+  iterations: 50000 # Total number of training iterations.
+  scale: 2.0 # Scaling factor. Increase to get more regularization.
+  batch_size: 8 # Training batch size. Reduce if memory issue.
+  seed: 42 # Seed number for reproducibility.
+  compile: false # Use toch.compile to speed up training at the cost of compilation time. Still under validation.
+  use_fourier: false # Compute the loss in Fourier space if true, or in spatial domain if false
+  use_spherical_support: true # Enforce the Fourier frequency to be in a circle in the size of the subtomogram if true.
+  wedge_low_support: 0 # Percentage of low frequency to keep in the input of the model, i.e. to remove from the missing wedge. 0 means that none are kept, 0.10 means that 10% of the lowest frequencies are kept has not part of the missing wedge.
+  ref_wedge_support: 1 # Percentage of low frequency to keep in the reference, i.e. to remove from the missing wedge. 0 means that none are kept, 0.10 means that 10% of the lowest frequencies are kept has not part of the missing wedge.
+  wedge_double_size: true # Defined the missing wedge on twice the size of a subtomogram is true.
+  save_n_iterations: 5000 # Save the model weights every N iterations.
+  save_tomo_n_iterations: 0 # Run the tomogram reconstruction every N iterations. One reconstruction might take several minutes. Value of 0 means it doesn't run the prediction during training iterations.
+  compute_avg_loss_n_iterations: 1000 # Average loss every N iterations.
+  use_flips: true # Include flip operators in the equivariance loss if true.
+  normalize_crops: false # Normalize each extracted sub-tomogram before going through the network is true.
+  use_inp_wedge: false # Use reconstructed wedge in the equivariance loss if true. The paper describe the case where it is false.
+  learning_rate: 1e-4 # Learning rate for training the network. Reduce it if training is chaotic.
+  use_mixed_precision: true # Use mixed precision tensor if true. This allows the training to be roughly twice faster at the cost of worse numerical precision. Usually setting it to true leads to still accurate results.
+  no_window: false # If true, use the full tomogram to train the model. If false, only the central part of the volume is used for training.
+  view_as_real: true # Ignore imaginary part after inverse Fourier transform is true.
+  upsample_volume: false # Upsample the full volume by a factor 2 if true.
+  eq_use_direct: false # If false, the rotated wedge is maksed from the loss computation.
+  min_distance: 0.5 # Minimum relative difference between rotated and unrotated missing wedge.
+  window_type: "boxcar" # Shape of the crop.
 
 predict_params:
-  batch_size: 5
-  stride: 36
-  pre_pad: true
-  pre_pad_size: null
-  avg_pool: false
+  batch_size: 5 # Inference batch size. Reduce if memory issue.
+  stride: 36 # Number of pixel between two reconstructed subtomograms. Overlap is handled by averaging.
+  pre_pad: true # Pad the original subtomograms with 0.
+  pre_pad_size: null # Size of padding to apply to the full tomogram.
+  avg_pool: false  # Use average pooling to smooth the input tomogram to process.
 
 model_params:
-  name: "unet3d_bf"
-  num_levels: 4
-  upsample: "default"
-  layer_order: "cr"
-  use_bias: false
-  padding_mode: "zeros"
-  pool_type: "max"
-  dropout_prob: 0.1
-# model_params:
-#   name: "iso_unet3d"
+  name: "unet3d_bf" # Name of the model. Only "unet3d_bf" is supported at the moment.
+  num_levels: 4 # Number of layers.
+  upsample: "default" # Upsampling technique in the Unet.
+  layer_order: "cr"  # Determines the order of layers in `SingleConv` module.
+  use_bias: false # Include bias in the neural network. We observed that setting it to false leads to a more robust network.
+  padding_mode: "zeros" # Padding mode for convolutions.
+  pool_type: "max" # Pooling in the Unet.
+  dropout_prob: 0.1 # Dropout, kills randomly percentage of the weights of the model.s
 
 mask_params:
-  use_mask: true
-  mask_frac: 0.5
-
+  use_mask: true # Apply the missing wedge mak to the input tomograms.
+  mask_frac: 0.5 # Threshold value to
 
 pretrain_params:
-  use_pretrain: false
-  model_path: None
+  use_pretrain: false # Load a given model weigths if true.
+  model_path: None # path to the model weights to load as pre-trained.

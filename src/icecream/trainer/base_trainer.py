@@ -3,28 +3,27 @@ Base trainer class for training models using nois2noise type loss
 """
 
 import os
-import torch
-import numpy as np
-import mrcfile
 import sys
-from icecream.utils.utils import get_wedge_3d_new,symmetrize_3D,get_measurement,fourier_loss
+import json
+import torch
+import mrcfile
+import numpy as np
+from tqdm import tqdm
 from icecream.utils.mask_util import make_mask
-
 from icecream.dataset.volumes import singleVolume
 from icecream.utils.inference_util import inference
-from tqdm import tqdm
-import json
+from icecream.utils.utils import get_wedge_3d_new, symmetrize_3D, get_measurement, fourier_loss
+
 
 class BaseTrainer:
     def __init__(self,
                  configs,
                  model,
-                 angle_max= 60,
-                 angle_min = -60,
-                 angles = None,
-                 save_path = './',
+                 angle_max=60,
+                 angle_min=-60,
+                 angles=None,
+                 save_path='./',
                  ):
-        
 
         raw_device = configs.device
         if isinstance(raw_device, int):
@@ -35,7 +34,7 @@ class BaseTrainer:
 
         self.model = model.to(self.device)
         self.save_path = save_path
-        
+
         self.loss_set = []
         self.diff_loss_set = []
         self.loss_avg_set = []
@@ -45,12 +44,10 @@ class BaseTrainer:
         self.criteria = torch.nn.MSELoss()
         self.optimizer = torch.optim.Adam(model.parameters(), lr=float(configs.learning_rate))
 
-
         self.obs_loss_set = []
         self.obs_loss_avg_set = []
         self.equi_loss_set = []
         self.equi_loss_avg_set = []
-
 
         if angles is not None:
             self.angle_max = np.max(angles)
@@ -59,24 +56,20 @@ class BaseTrainer:
             self.angle_max = angle_max
             self.angle_min = angle_min
         self.setup()
-        
-
 
     def setup(self):
-        self.crop_size = self.configs.input_crop_size
+        self.crop_size = self.configs.crop_size
 
         self.wedge_input = self.initialize_wedge(self.crop_size)
         self.window = self.initialize_window(self.crop_size)
 
-
     def get_real_binary_filter(self, binary_filter):
 
         binary_filter_sym = symmetrize_3D(binary_filter)
-        binary_filter_t = (binary_filter + binary_filter_sym)/2
-        binary_filter_t[binary_filter_t>0.1]  = 1
+        binary_filter_t = (binary_filter + binary_filter_sym) / 2
+        binary_filter_t[binary_filter_t > 0.1] = 1
 
         return binary_filter_t
-    
 
     def get_real_binary_filters_batch(self, binary_filters):
 
@@ -88,12 +81,10 @@ class BaseTrainer:
             binary_filters_sym[i] = self.get_real_binary_filter(binary_filters[i])
         return binary_filters_sym
 
-
-
     def normalize_volume(self, vol):
         return (vol - vol.mean()) / (vol.std() + 1e-8)
 
-    def initialize_wedge(self,crop_size, wedge_support = None):
+    def initialize_wedge(self, crop_size, wedge_support=None):
         """
         Initialize the wedge for the model.
         This method should be overridden by subclasses if needed.
@@ -101,27 +92,26 @@ class BaseTrainer:
 
         if wedge_support is None:
             wedge_support = self.configs.wedge_low_support
-        wedge,ball = get_wedge_3d_new(crop_size,
-                                      max_angle = self.angle_max,
-                                      min_angle = self.angle_min,
-                                      rotation = 0,
-                                      low_support=wedge_support,
-                                      use_spherical_support= self.configs.use_spherical_support)
+        wedge, ball = get_wedge_3d_new(crop_size,
+                                       max_angle=self.angle_max,
+                                       min_angle=self.angle_min,
+                                       rotation=0,
+                                       low_support=wedge_support,
+                                       use_spherical_support=self.configs.use_spherical_support)
         wedge_t = torch.tensor(wedge, dtype=torch.float32, device=self.device)
         wedge_t_sym = symmetrize_3D(wedge_t)
-        wedge_t = (wedge_t_sym + wedge_t)/2
-        wedge_t[wedge_t>0.1]  = 1
+        wedge_t = (wedge_t_sym + wedge_t) / 2
+        wedge_t[wedge_t > 0.1] = 1
 
-        return  wedge_t
+        return wedge_t
 
-    def initialize_window(self,crop_size):
-        w = np.zeros((crop_size,crop_size,crop_size))
-        w[crop_size//4:-crop_size//4,crop_size//4:-crop_size//4,crop_size//4:-crop_size//4] = 1
-        w_t = torch.tensor(w, dtype=torch.float32, device=self.device)     
-        return w_t   
+    def initialize_window(self, crop_size):
+        w = np.zeros((crop_size, crop_size, crop_size))
+        w[crop_size // 4:-crop_size // 4, crop_size // 4:-crop_size // 4, crop_size // 4:-crop_size // 4] = 1
+        w_t = torch.tensor(w, dtype=torch.float32, device=self.device)
+        return w_t
 
-
-    def load_data(self,vol_paths_1, vol_paths_2, vol_mask_path = None, use_mask = False, mask_frac = 0.3):
+    def load_data(self, vol_paths_1, vol_paths_2, vol_mask_path=None, use_mask=False, mask_frac=0.3):
 
         """
         Load data from the given volume paths.
@@ -136,36 +126,35 @@ class BaseTrainer:
 
         if len(vol_paths_1) != len(vol_paths_2):
             raise ValueError("The number of volume paths for vol_paths_1 and vol_paths_2 must be the same.")
-        if len(vol_paths_1) >1:
+        if len(vol_paths_1) > 1:
             # raise not implemented error
-            raise NotImplementedError("Loading multiple volumes is not implemented yet. Please provide a single volume path for each set.")
-        
-        if len(vol_paths_1) == 1:
+            raise NotImplementedError(
+                "Loading multiple volumes is not implemented yet. Please provide a single volume path for each set.")
 
+        if len(vol_paths_1) == 1:
             with mrcfile.open(vol_paths_1[0]) as mrc:
                 vol_1 = mrc.data
-            vol_1 = np.moveaxis(vol_1,0,2).astype(np.float32)
-            vol_1_t =torch.tensor(vol_1, dtype=torch.float32, device='cpu')
+            vol_1 = np.moveaxis(vol_1, 0, 2).astype(np.float32)
+            vol_1_t = torch.tensor(vol_1, dtype=torch.float32, device='cpu')
             vol_1_t = self.normalize_volume(vol_1_t)
-            
 
             with mrcfile.open(vol_paths_2[0]) as mrc:
                 vol_2 = mrc.data
-            vol_2 = np.moveaxis(vol_2,0,2).astype(np.float32)
-            vol_2_t =torch.tensor(vol_2, dtype=torch.float32, device='cpu')
+            vol_2 = np.moveaxis(vol_2, 0, 2).astype(np.float32)
+            vol_2_t = torch.tensor(vol_2, dtype=torch.float32, device='cpu')
             vol_2_t = self.normalize_volume(vol_2_t)
 
         if vol_mask_path is not None:
             with mrcfile.open(vol_mask_path) as mrc:
                 vol_mask = mrc.data
-            vol_mask = np.moveaxis(vol_mask,0,2).astype(np.float32)
+            vol_mask = np.moveaxis(vol_mask, 0, 2).astype(np.float32)
             vol_mask_t = torch.tensor(vol_mask, dtype=torch.float32, device='cpu')
         else:
             if use_mask:
-                vol_avg= ((vol_1_t + vol_2_t)/2).cpu().numpy()
+                vol_avg = ((vol_1_t + vol_2_t) / 2).cpu().numpy()
                 #TODO: add these parameters to the config
-                vol_mask = make_mask(vol_avg,mask_boundary = None, side = 5, density_percentage=50., std_percentage=50)
-                vol_mask_t =torch.tensor(vol_mask, dtype=torch.float32, device=self.device)
+                vol_mask = make_mask(vol_avg, mask_boundary=None, side=5, density_percentage=50., std_percentage=50)
+                vol_mask_t = torch.tensor(vol_mask, dtype=torch.float32, device=self.device)
 
             else:
                 vol_mask_t = None
@@ -174,40 +163,39 @@ class BaseTrainer:
             if hasattr(self.configs, 'window_type') is False:
                 self.configs.window_type = 'boxcar'
 
-        self.vol_data = singleVolume(volume_1 = vol_1_t,
-                    volume_2=  vol_2_t, 
-                    wedge = self.wedge_input, 
-                    mask= vol_mask_t,
-                    mask_frac= mask_frac,
-                    crop_size= self.crop_size,
-                    use_flips=self.configs.use_flips,
-                    normalize_crops=self.configs.normalize_crops,
-                    upsample_volume=self.configs.upsample_volume,
-                    window_type=self.configs.window_type,
-                    min_distance=self.configs.min_distance,
-                    device=self.device
-                    )
-        
+        self.vol_data = singleVolume(volume_1=vol_1_t,
+                                     volume_2=vol_2_t,
+                                     wedge=self.wedge_input,
+                                     mask=vol_mask_t,
+                                     mask_frac=mask_frac,
+                                     crop_size=self.crop_size,
+                                     use_flips=self.configs.use_flips,
+                                     normalize_crops=self.configs.normalize_crops,
+                                     upsample_volume=self.configs.upsample_volume,
+                                     window_type=self.configs.window_type,
+                                     min_distance=self.configs.min_distance,
+                                     device=self.device
+                                     )
+
         self.k_sets = self.vol_data.k_sets
-            
-    
+
     def get_estimates(self, inp_1, inp_2):
         """
         Computes the estimates for the input crops inp_1 and inp_2.
         """
         if self.configs.use_mixed_precision:
             with self.autocast:
-                est_1 = self.model(inp_1[:,None])[:,0]
-                est_2 = self.model(inp_2[:,None])[:,0]
+                est_1 = self.model(inp_1[:, None])[:, 0]
+                est_2 = self.model(inp_2[:, None])[:, 0]
             est_1 = est_1.float()
             est_2 = est_2.float()
         else:
-            est_1 = self.model(inp_1[:,None])[:,0]
-            est_2 = self.model(inp_2[:,None])[:,0]
+            est_1 = self.model(inp_1[:, None])[:, 0]
+            est_2 = self.model(inp_2[:, None])[:, 0]
 
         return est_1, est_2
 
-    def train(self,iterations =None):
+    def train(self, iterations=None, configs=None):
         self.model.train()
 
         if iterations is None:
@@ -220,7 +208,7 @@ class BaseTrainer:
         else:
             print("Not using mixed precision training")
             scaler = None
-            autocast = None            
+            autocast = None
         self.current_iteration = 0
 
         if hasattr(self.configs, 'compile'):
@@ -238,14 +226,13 @@ class BaseTrainer:
             self.optimizer.zero_grad()
             self.current_iteration = iteration
             data = self.vol_data.get_random_crop(self.configs.batch_size)
-            inp_1= data['input_1'].to(self.device)
+            inp_1 = data['input_1'].to(self.device)
             inp_2 = data['input_2'].to(self.device)
             if self.configs.use_inp_wedge:
-                inp_1 = get_measurement(inp_1,self.wedge_input)
-                inp_2 = get_measurement(inp_2,self.wedge_input)
+                inp_1 = get_measurement(inp_1, self.wedge_input)
+                inp_2 = get_measurement(inp_2, self.wedge_input)
 
-
-            loss = self.compute_loss(inp_1,inp_2)
+            loss = self.compute_loss(inp_1, inp_2)
             if self.configs.use_mixed_precision:
                 scaler.scale(loss).backward()
                 scaler.step(self.optimizer)
@@ -253,21 +240,28 @@ class BaseTrainer:
             else:
                 loss.backward()
                 self.optimizer.step()
-    
+
             loss_val = float(loss.detach().item())
             ema = loss_val if ema is None else (alpha * loss_val + (1 - alpha) * ema)
             #cur_lr = self.optimizer.param_groups[0]["lr"]
             pbar.set_postfix(iteration=iteration + 1, ema_loss=f"{ema:.4f}", loss=f"{loss_val:.4f}")
             pbar.update(1)
-            if iteration>0 and iteration % self.configs.compute_avg_loss_n_iterations == 0:
+            if iteration > 0 and iteration % self.configs.compute_avg_loss_n_iterations == 0:
                 self.compute_average_loss()
 
-
-            if iteration>0 and iteration % self.configs.save_n_iterations == 0:
+            if iteration > 0 and iteration % self.configs.save_n_iterations == 0:
                 self.save_model(iteration)
 
+            if iteration > 0 and self.configs.save_tomo_n_iterations > 0 and iteration % self.configs.save_tomo_n_iterations == 0:
+                if configs is not None:
+                    vol_est = self.predict_dir(**configs.predict_params)
+                    # Save the estimated volume
+                    vol_est_name = 'latest_prediction.mrc'
+                    vol_save_path = os.path.join(self.save_path, vol_est_name)
+                    out = mrcfile.new(vol_save_path, overwrite=True)
+                    out.set_data(np.moveaxis(vol_est.astype(np.float32), 2, 0))
+                    out.close()
 
-        
     def compute_loss(self, inp_1, inp_2):
         """
         Compute the loss between two inputs.
@@ -279,22 +273,22 @@ class BaseTrainer:
         """
         est_1, est_2 = self.get_estimates(inp_1, inp_2)
 
-        loss = fourier_loss(target = inp_1, 
-                            estimate = est_2,
-                            criteria = self.criteria,
-                              use_fourier = self.configs.use_fourier,
-                                window = self.window) + fourier_loss(target = inp_2,
-                            estimate = est_1,
-                            criteria = self.criteria,
-                              use_fourier = self.configs.use_fourier,
-                                window = self.window)
-       
+        loss = fourier_loss(target=inp_1,
+                            estimate=est_2,
+                            criteria=self.criteria,
+                            use_fourier=self.configs.use_fourier,
+                            window=self.window) + fourier_loss(target=inp_2,
+                                                               estimate=est_1,
+                                                               criteria=self.criteria,
+                                                               use_fourier=self.configs.use_fourier,
+                                                               window=self.window)
+
         with torch.no_grad():
             self.loss_set.append(loss.item())
             diff_loss = torch.mean(torch.abs(est_1 - est_2))
             self.diff_loss_set.append(diff_loss.item())
         return loss
-    
+
     def compute_average_loss(self):
         """
         Compute the average loss over the loss set.
@@ -313,7 +307,8 @@ class BaseTrainer:
         self.diff_loss_avg_set.append(avg_diff_loss)
         self.obs_loss_avg_set.append(avg_obs_loss)
         self.equi_loss_avg_set.append(avg_equi_loss)
-        print(f"Average Loss: {avg_loss}, Average Diff Loss: {avg_diff_loss}, Average Obs Loss: {avg_obs_loss}, Average Equi Loss: {avg_equi_loss}")
+        print(
+            f"Average Loss: {avg_loss}, Average Diff Loss: {avg_diff_loss}, Average Obs Loss: {avg_obs_loss}, Average Equi Loss: {avg_equi_loss}")
 
     def save_model(self, iteration=None):
         """
@@ -373,19 +368,15 @@ class BaseTrainer:
             self.diff_loss_avg_set = checkpoint['diff_loss_avg_set']
             self.obs_loss_avg_set = checkpoint['obs_loss_avg_set']
             self.equi_loss_avg_set = checkpoint['equi_loss_avg_set']
-            
+
         print(f"Model loaded from {model_path}")
 
-
-
-
-
-    def predict_dir(self,stride = None,
-                crop_size = None,
-                batch_size =2, 
-                pre_pad = True,
-                pre_pad_size = None,
-                avg_pool = False):
+    def predict_dir(self, stride=None,
+                    crop_size=None,
+                    batch_size=2,
+                    pre_pad=True,
+                    pre_pad_size=None,
+                    avg_pool=False):
         """
         Predict using the trained model.
         This method should be overridden by subclasses if needed.
@@ -400,17 +391,16 @@ class BaseTrainer:
         self.model.eval()
 
         if stride is None:
-            stride = self.configs.input_crop_size
+            stride = self.configs.crop_size
 
         if pre_pad_size is None:
-            pre_pad_size = self.configs.input_crop_size//4
+            pre_pad_size = self.configs.crop_size // 4
 
         if crop_size is None:
-            crop_size = self.configs.input_crop_size
+            crop_size = self.configs.crop_size
         else:
             self.window = self.initialize_window(crop_size)
-            pre_pad_size = crop_size//4
-
+            pre_pad_size = crop_size // 4
 
         # if self.configs.no_window:
         #     self.window = None
@@ -420,43 +410,40 @@ class BaseTrainer:
         if hasattr(self.configs, 'window_type'):
             self.window_type = self.configs.window_type
         else:
-            self.window_type =  None
+            self.window_type = None
 
-        vol_est_1, _ = inference(model = self.model, 
-                                    vol_input = self.vol_data.volume_1,
-                                    size =crop_size, 
-                                    stride =stride, 
-                                    batch_size=batch_size,
-                                    window = self.window,
-                                    window_type = self.window_type,
-                                    run_multi=None,
-                                    wedge = wedge_used,
-                                    update_missing_wedge=False,
-                                    pre_pad=pre_pad,
-                                    pre_pad_size = pre_pad_size,
-                                    device=self.device,
-                                    upsampled_=self.configs.upsample_volume,
-                                    avg_pool=avg_pool)
+        vol_est_1, _ = inference(model=self.model,
+                                 vol_input=self.vol_data.volume_1,
+                                 size=crop_size,
+                                 stride=stride,
+                                 batch_size=batch_size,
+                                 window=self.window,
+                                 window_type=self.window_type,
+                                 run_multi=None,
+                                 wedge=wedge_used,
+                                 update_missing_wedge=False,
+                                 pre_pad=pre_pad,
+                                 pre_pad_size=pre_pad_size,
+                                 device=self.device,
+                                 upsampled_=self.configs.upsample_volume,
+                                 avg_pool=avg_pool)
 
-        vol_est_2, _ = inference(model = self.model, 
-                                    vol_input = self.vol_data.volume_2,
-                                    size =crop_size, 
-                                    stride =stride, 
-                                    batch_size=batch_size,
-                                    window = self.window,
-                                    window_type = self.window_type,
-                                    run_multi=None,
-                                    wedge = wedge_used,
-                                    update_missing_wedge=False,
-                                    pre_pad=pre_pad,
-                                    device=self.device,
-                                    pre_pad_size = pre_pad_size,
-                                    upsampled_=self.configs.upsample_volume,
-                                    avg_pool=avg_pool)   
+        vol_est_2, _ = inference(model=self.model,
+                                 vol_input=self.vol_data.volume_2,
+                                 size=crop_size,
+                                 stride=stride,
+                                 batch_size=batch_size,
+                                 window=self.window,
+                                 window_type=self.window_type,
+                                 run_multi=None,
+                                 wedge=wedge_used,
+                                 update_missing_wedge=False,
+                                 pre_pad=pre_pad,
+                                 device=self.device,
+                                 pre_pad_size=pre_pad_size,
+                                 upsampled_=self.configs.upsample_volume,
+                                 avg_pool=avg_pool)
 
+        vol_est = (vol_est_1 + vol_est_2) / 2
 
- 
-        vol_est = (vol_est_1 + vol_est_2)/2
-        
         return vol_est
-    
