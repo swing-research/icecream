@@ -12,8 +12,8 @@ The codebase is under active development.
 #### Updates 
 Date: 23.10.2025
  - Code cleanup. 
- - Added support to use pre-trained model as initialization during training. 
- - Added option for torch.compile.
+ - Added support to use a pre-trained model as initialization during training. 
+ - Added an option for torch.compile.
 
 The current version supports training on a single split of the tomograms.  
 Upcoming updates will include support for **multi-volume training**.
@@ -27,20 +27,20 @@ git clone git@github.com:swing-research/icecream.git
 cd icecream
 ```
 
-Create a conda environment or you can use other environment managers like pipenv, poetry, uv etc with python 3.11 or above. We will use conda
-with python 3.11 in this example:
+Create a conda environment or you can use other environment managers like pipenv, poetry, uv etc with Python 3.11 or above. We will use conda
+with Python 3.11 in this example:
 
 ```bash
 conda create -n icecream python=3.11 -y
 conda activate icecream
 ```
-Install cuda enabled pytorch from https://pytorch.org/get-started/locally/ based on your system configuration. For example, for linux with cuda 12.8
+Install CUDA-enabled PyTorch from https://pytorch.org/get-started/locally/ based on your system configuration. For example, for Linux with CUDA 12.8
 
 ```bash
-pip install torch  --index-url https://download.pytorch.org/whl/cu128
+pip install torch --index-url https://download.pytorch.org/whl/cu128
 ``` 
 
-Install icecream and its dependencies:
+Install Icecream and its dependencies:
 
 ```bash
 pip install -e .
@@ -55,10 +55,10 @@ It should display the two main commands: `train` and `predict`.
 
 
 ## Usage
-To train the model, use the `train` command. Note the the command also reconstruct the volume after training. Howeve, you can use the `predict` command to reconstruct the volume from a trained model using intermediate checkpoints.
+To train the model, use the `train` command. Note that the command also reconstructs the volume after training. However, you can use the `predict` command to reconstruct the volume from a trained model using intermediate checkpoints.
 
 
-To train the model you can use a config file or directly pass the parameters through command line. This uses the default training parameters specified in `src/icecream/default.yaml`. You can override these by passing  a config file of your own. 
+To train the model, you can use a config file or directly pass the parameters through the command line. This uses the default training parameters specified in `src/icecream/default.yaml`. You can override these by passing a config file of your own. 
 
 Now, we show how to train the model using default parameters. 
 
@@ -71,7 +71,7 @@ icecream train \
   --batch-size 8
 ```
 
-This will train the model using the two tomograms `tomogram_0.mrc` and `tomogram_1.mrc` with tilt angles specified in `angles.tlt`. The reconstructions will be saved in the directory `/path/to/save/dir` along with the 'config.json' file containing the training and model parameters. The actual model files will be save in `/path/to/save/dir/models`. The training batch size is set to 8. You can change other training parameters like number of epochs,scale etc. 
+This will train the model using the two tomograms `tomogram_0.mrc` and `tomogram_1.mrc` with tilt angles specified in `angles.tlt`. The reconstructions will be saved in the directory `/path/to/save/dir` along with the 'config.json' file containing the training and model parameters. The actual model files will be saved in `/path/to/save/dir/models`. The training batch size is set to 8. You can change other training parameters like the number of epochs, scale, etc. 
 
 
 ### Using a pre-trained model for initialization
@@ -88,12 +88,12 @@ icecream train \
 ```
 
 
-To train the model using a config file, create a yaml file with the contents similar to `src/icecream/defaults.yaml` and pass it to the `--config` option. 
+To train the model using a config file, create a YAML file with the contents similar to `src/icecream/defaults.yaml` and pass it to the `--config` option. 
 ```bash
 icecream train --config /path/to/config.yaml
 ```
 
-In your config file, make sure to update the  `data` section with the correct tomogram paths and angle information. For example:
+In your config file, make sure to update the `data` section with the correct tomogram paths and angle information. For example:
 
 ```yaml
 data:
@@ -118,14 +118,14 @@ data:
 To reconstruct the volume from a trained model, use the `predict` command. You can specify the epoch of the model to use for reconstruction. If not specified, it will use the latest epoch.
 
 ```bash
-icecream predict  --config /path/to/config.json \
+icecream predict --config /path/to/config.json \
   --tomo0 /path/to/tomogram_0.mrc \
   --tomo1 /path/to/tomogram_1.mrc \
   --angles /path/to/angles.tlt \
-  --save_dir /path/to/save/dir \  # directory to save output if  different from training (optional)
-  --iteration 50000 \  # iteration to use for reconstruction (optional)
+  --save_dir /path/to/save/dir \  # directory to save output if different from training (optional)
+  --iteration 50000  # iteration to use for reconstruction (optional)
 ```
-Note that the `config.json` file is generate during training and contains the model and training parameters and saved in the training save directory. You can also use a yaml config file instead of json. 
+Note that the `config.json` file is generated during training and contains the model and training parameters and saved in the training save directory. You can also use a YAML config file instead of JSON. 
 
 
 ## License
