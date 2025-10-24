@@ -45,11 +45,11 @@ def train_model(config_yaml):
     path_2 = data_config.tomo1
     mask_path = data_config.mask
 
-    # Throw not implemented error if path_1 or path_2 has more than one volume
-    if isinstance(path_1, list) and len(path_1) > 1:
-        raise NotImplementedError("Multiple volumes not supported yet.")
-    if isinstance(path_2, list) and len(path_2) > 1:
-        raise NotImplementedError("Multiple volumes not supported yet.")
+    # # Throw not implemented error if path_1 or path_2 has more than one volume
+    # if isinstance(path_1, list) and len(path_1) > 1:
+    #     raise NotImplementedError("Multiple volumes not supported yet.")
+    # if isinstance(path_2, list) and len(path_2) > 1:
+    #     raise NotImplementedError("Multiple volumes not supported yet.")
 
     # if configs.data has an attribute called 'angles', use it, otherwise set to None
     angles = getattr(data_config, 'angles', None)
@@ -69,7 +69,7 @@ def train_model(config_yaml):
                                  model=model,
                                  angle_max=angle_max,
                                  angle_min=angle_min,
-                                 angles=None,  # Set to specific angles, for further development
+                                 angles_set=None,  # Set to specific angles, for further development
                                  save_path=save_path
                                  )
     print("Loading the tomograms ...")

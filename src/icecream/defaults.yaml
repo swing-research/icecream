@@ -25,7 +25,7 @@ train_params:
   compute_avg_loss_n_iterations: 1000 # Average loss every N iterations.
   use_flips: true # Include flip operators in the equivariance loss if true.
   normalize_crops: false # Normalize each extracted sub-tomogram before going through the network is true.
-  use_inp_wedge: false # Use reconstructed wedge in the equivariance loss if true. The paper describe the case where it is false.
+  use_inp_wedge: false # Use reconstructed wedge in the equivariance loss if false. The paper describe the case where it is false.
   learning_rate: 1e-4 # Learning rate for training the network. Reduce it if training is chaotic.
   use_mixed_precision: true # Use mixed precision tensor if true. This allows the training to be roughly twice faster at the cost of worse numerical precision. Usually setting it to true leads to still accurate results.
   no_window: false # If true, use the full tomogram to train the model. If false, only the central part of the volume is used for training.
@@ -34,6 +34,7 @@ train_params:
   eq_use_direct: false # If false, the rotated wedge is maksed from the loss computation.
   min_distance: 0.5 # Minimum relative difference between rotated and unrotated missing wedge.
   window_type: "boxcar" # Shape of the crop.
+  load_device: false # load all the full tomograms on the device. Will be faster but requires more memory.
 
 predict_params:
   batch_size: 5 # Inference batch size. Reduce if memory issue.
@@ -55,7 +56,13 @@ model_params:
 mask_params:
   use_mask: true # Apply the missing wedge mak to the input tomograms.
   mask_frac: 0.5 # Threshold value to
+  mask_tomo_side : 5
+  mask_tomo_density_perc : 50
+  mask_tomo_std_perc : 50
 
 pretrain_params:
   use_pretrain: false # Load a given model weigths if true.
   model_path: None # path to the model weights to load as pre-trained.
+
+debug:
+  verbose: false # Save several outputs regarding data pre-processing, training and inference. Will result in a lot of file saved.

@@ -171,8 +171,8 @@ def generate_all_cube_symmetries_torch(cube, wedge, use_flips=False, min_distanc
     Generates all 48 symmetries of a 3D cube (NxNxN NumPy array), including reflections.
 
     Parameters:
-        cube (numpy.ndarray): A 3D NumPy array of shape (N, N, N).
-        wedge (numpy.ndarray): A 3D NumPy array of shape (N, N, N) with
+        cube (torch.tensor): A 3D NumPy array of shape (N, N, N).
+        wedge (torch.tensor): A 3D NumPy array of shape (N, N, N) with
             1s where the wedge is and 0s elsewhere.
 
     Returns:

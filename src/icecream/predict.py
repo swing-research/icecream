@@ -51,11 +51,11 @@ def predict(config_yaml, config_path, iteration=-1, crop_size=None, batch_size=0
     # create save directory if it does not exist
     os.makedirs(save_path, exist_ok=True)
 
-    # Throw not implemented error if path_1 or path_2 has more than one volume
-    if isinstance(path_1, list) and len(path_1) > 1:
-        raise NotImplementedError("Multiple volumes not supported yet.")
-    if isinstance(path_2, list) and len(path_2) > 1:
-        raise NotImplementedError("Multiple volumes not supported yet.")
+    # # Throw not implemented error if path_1 or path_2 has more than one volume
+    # if isinstance(path_1, list) and len(path_1) > 1:
+    #     raise NotImplementedError("Multiple volumes not supported yet.")
+    # if isinstance(path_2, list) and len(path_2) > 1:
+    #     raise NotImplementedError("Multiple volumes not supported yet.")
 
     # if configs.data has an attribute called 'angles', use it, otherwise set to None
     angles = getattr(data_config, 'angles', None)
@@ -79,45 +79,31 @@ def predict(config_yaml, config_path, iteration=-1, crop_size=None, batch_size=0
                                 model=model, 
                                 angle_max=angle_max,
                                 angle_min=angle_min,
-                                angles=None,  # Set to specific angles if needed
+                                angles_set=None,  # Set to specific angles if needed
                                 save_path=save_path
                                 )
-    
-    # Get name to load right weights
-    model_path = os.path.join(save_path,'model')
-    save_name = combine_names(path_1[0],path_2[0]).split('.mrc')[0]
-    vol_est_name = save_name
-    if iteration != -1:
-        vol_est_name += f'_iteration_{iteration}'
-    if batch_size !=0:
-        print(f"Using batch size: {batch_size}")
-        configs.predict_params['batch_size'] = batch_size
-        vol_est_name += f'_bs_{batch_size}'
-    if crop_size is not None:
-        print(f"Using crop size: {crop_size}")
-        configs.predict_params['crop_size'] = crop_size
-        vol_est_name += f'_crop_{crop_size}'
-    vol_est_name += '.mrc'
-    if iteration == -1:
-        iteration = get_latest_iteration(model_path)
-    if iteration == -1:
-        raise ValueError(f"No saved model found in {model_path}")
 
+    model_save_path = os.path.join(save_path, 'model')
+    if iteration == -1:
+        iteration = get_latest_iteration(model_save_path)
+    if iteration == -1:
+        raise ValueError(f"No saved model found in {model_save_path}")
+    model_path = os.path.join(model_save_path, f'model_iteration_{iteration}.pt')
     # Load the model weights
     model_path = os.path.join(model_path, f'model_iteration_{iteration}.pt')
     trainer.load_model(model_path)
     trainer.load_data(vol_paths_1=path_1,
-                    vol_paths_2=path_2, 
+                    vol_paths_2=path_2,
                     vol_mask_path=mask_path)
 
-    # Evaluate the model
-    vol_est = trainer.predict_dir(**configs.predict_params)
-
-    # Save the estimated volume
-    vol_save_path = os.path.join(save_path, vol_est_name)
-    out = mrcfile.new(vol_save_path,overwrite=True)
-    out.set_data(np.moveaxis(vol_est.astype(np.float32),2,0))
-    out.close()
+    # Reconstruct each volume in the list
+    vol_est_list = trainer.predict_dir(**configs.predict_params)
+    for i in range(len(vol_est_list)):
+        # Save the estimated volume
+        vol_save_path = os.path.join(save_path, f"volume_{i}.mrc")
+        out = mrcfile.new(vol_save_path,overwrite=True)
+        out.set_data(np.moveaxis(vol_est_list[i].astype(np.float32),2,0))
+        out.close()
 
 def main(
     config: Optional[Path] = typer.Option(None, "--config", "-c", help="Path to YAML config file"),
