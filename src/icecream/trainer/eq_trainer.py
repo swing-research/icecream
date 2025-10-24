@@ -17,8 +17,8 @@ class EquivariantTrainer(BaseTrainer):
         Setup method for the EquivariantTrainer.
         Initializes the wedge and window for the model.
         """
-        self.crop_size = int(self.configs.input_crop_size)
-        self.crop_size_eq = self.configs.input_crop_size
+        self.crop_size = int(self.configs.crop_size)
+        self.crop_size_eq = self.configs.crop_size
         self.window_input = self.initialize_window(self.crop_size)
         if self.configs.wedge_double_size:
             self.wedge_size = self.crop_size * 2
@@ -38,15 +38,10 @@ class EquivariantTrainer(BaseTrainer):
             wedge_ref = self.get_real_binary_filter(wedge_ref)
             self.wedge_ref_set.append(wedge_ref)
         self.window = self.initialize_window(self.crop_size_eq)
-        self.window_n2n = self.initialize_window(self.crop_size_eq)
-
         if self.configs.no_window:
             print('No window applied')
             self.window = None
             self.window_input = None
-        if self.configs.no_n2n_window:
-            print('No N2N window applied')
-            self.window_n2n = None
 
 
 

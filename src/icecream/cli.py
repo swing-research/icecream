@@ -7,6 +7,7 @@ from .train import train_model
 from .predict import predict
 
 from .utils.utils import split_tilt_series
+from torch.profiler import profile, record_function, ProfilerActivity
 
 app = typer.Typer(add_completion=False, help="Cryo-ET training & prediction CLI")
 
@@ -100,7 +101,19 @@ def cli_train(
         need += ["data.tilt_min", "data.tilt_max"]
     require(cfg, need)
 
-    train_model(cfg)
+    if cfg['debug']['profiling']:
+        with profile(
+                activities=[ProfilerActivity.CPU, ProfilerActivity.CUDA],
+                record_shapes=True,  # optional: track tensor shapes
+                profile_memory=True,  # optional: track memory usage
+                with_stack=False,  # set True for call stack traces
+        ) as prof:
+            with record_function("model_inference"):
+                train_model(cfg)
+
+        print(prof.key_averages().table(sort_by="cuda_time_total", row_limit=500))
+    else:
+        train_model(cfg)
 
 # ---------- subcommand: predict ----------
 @app.command("predict")
@@ -154,8 +167,20 @@ def cli_predict(
         need += ["data.tilt_min", "data.tilt_max"]
     require(cfg, need)
 
-    # your predict() signature: predict(config_yaml, epoch=-1, crop_size=None, batch_size=0)
-    predict(cfg, config_path=config, iteration=iteration, crop_size=crop_size, batch_size=(batch_size or 0), save_path=None)
+
+    if cfg['debug']['profiling']:
+        with profile(
+                activities=[ProfilerActivity.CPU, ProfilerActivity.CUDA],
+                record_shapes=True,  # optional: track tensor shapes
+                profile_memory=True,  # optional: track memory usage
+                with_stack=False,  # set True for call stack traces
+        ) as prof:
+            with record_function("model_inference"):
+                predict(cfg, config_path=config, iteration=iteration, crop_size=crop_size, batch_size=(batch_size or 0), save_path=None)
+
+        print(prof.key_averages().table(sort_by="cuda_time_total", row_limit=500))
+    else:
+        predict(cfg, config_path=config, iteration=iteration, crop_size=crop_size, batch_size=(batch_size or 0), save_path=None)
 
 
 # ---------- subcommand: predict ----------

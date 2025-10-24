@@ -35,6 +35,7 @@ train_params:
   min_distance: 0.5 # Minimum relative difference between rotated and unrotated missing wedge.
   window_type: "boxcar" # Shape of the crop.
   load_device: false # load all the full tomograms on the device. Will be faster but requires more memory.
+  num_workers: 8 # number of workers available for the dataloader.
 
 predict_params:
   batch_size: 5 # Inference batch size. Reduce if memory issue.
@@ -66,3 +67,4 @@ pretrain_params:
 
 debug:
   verbose: false # Save several outputs regarding data pre-processing, training and inference. Will result in a lot of file saved.
+  profiling: false # Profile the code.

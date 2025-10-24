@@ -11,7 +11,7 @@ import numpy as np
 from tqdm import tqdm
 from torch.utils.data import DataLoader
 from icecream.utils.mask_util import make_mask
-from dataset.multi_volumes import MultiVolume
+from icecream.dataset.multi_volumes import MultiVolume
 from icecream.dataset.volumes import singleVolume
 from icecream.utils.inference_util import inference
 from icecream.utils.utils import get_wedge_3d_new, symmetrize_3D, get_measurement, fourier_loss
@@ -21,8 +21,8 @@ class BaseTrainer:
     def __init__(self,
                  configs,
                  model,
-                 angle_max=60,
-                 angle_min=-60,
+                 angle_max_set=[60],
+                 angle_min_set=[-60],
                  angles_set = None,
                  save_path='./',
                  ):
@@ -53,21 +53,14 @@ class BaseTrainer:
         self.equi_loss_set = []
         self.equi_loss_avg_set = []
 
+        self.angle_max_set = angle_max_set
+        self.angle_min_set = angle_min_set
 
-        self.angle_max_set = []
-        self.angle_min_set = []
-        if angles_set is not None:
-            for angle in angles_set:
-                self.angle_max_set.append(angle.max())
-                self.angle_min_set.append(angle.min())
-        else:
-            self.angle_max_set = [angle_max]
-            self.angle_min_set = [angle_min]
         self.setup()
 
     def setup(self):
         self.crop_size = int(self.configs.crop_size)
-        self.crop_size_eq = int(self.configs.input_crop_size)
+        self.crop_size_eq = int(self.configs.crop_size)
         self.window = self.initialize_window(self.crop_size)
         # self.wedge_input = self.initialize_wedge(self.crop_size)
         self.wedge_input_set = []
@@ -249,7 +242,7 @@ class BaseTrainer:
         vol_1_set = []
         vol_2_set = []
         vol_mask_set = []
-        for i in tqdm(range(len(vol_paths_1))):
+        for i in range(len(vol_paths_1)):
             vol_1_t = self.load_volume(vol_paths_1[i])
             vol_2_t = self.load_volume(vol_paths_2[i])
             print(f"Loaded volume {vol_paths_1[i]} and {vol_paths_2[i]}.")
@@ -297,7 +290,7 @@ class BaseTrainer:
                                     mask_frac=mask_frac,
                                     crop_size=self.crop_size,
                                     use_flips=self.configs.use_flips,
-                                    n_crops=self.configs.n_crops,
+                                    n_crops=1,
                                     normalize_crops=self.configs.normalize_crops,
                                     device=self.device)
 
