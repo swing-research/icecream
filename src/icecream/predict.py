@@ -32,10 +32,9 @@ def get_latest_iteration(model_path):
 
     # Extract iteration numbers and find the maximum
     iterations = [int(f.split('_')[-1].split('.')[0]) for f in iteration_files]
-
     return max(iterations)
 
-def predict(config_yaml, config_path, iteration=-1, crop_size=None, batch_size=0, save_path=None):
+def predict(config_yaml):
     """
     Run the prediction using a trained model and save it.
     """
@@ -43,19 +42,13 @@ def predict(config_yaml, config_path, iteration=-1, crop_size=None, batch_size=0
     # Get params
     configs = SimpleNamespace(**config_yaml)
     data_config = SimpleNamespace(**configs.data)
+    predict_config = SimpleNamespace(**configs.predict_params)
     path_1 = data_config.tomo0
     path_2 = data_config.tomo1
     mask_path = data_config.mask
-    # if explicit save path is not given, save in the folder containing the config file
-    save_path = config_path.parent if save_path is None else save_path
     # create save directory if it does not exist
-    os.makedirs(save_path, exist_ok=True)
-
-    # # Throw not implemented error if path_1 or path_2 has more than one volume
-    # if isinstance(path_1, list) and len(path_1) > 1:
-    #     raise NotImplementedError("Multiple volumes not supported yet.")
-    # if isinstance(path_2, list) and len(path_2) > 1:
-    #     raise NotImplementedError("Multiple volumes not supported yet.")
+    save_dir_reconstructions = predict_config.save_dir_reconstructions
+    os.makedirs(save_dir_reconstructions, exist_ok=True)
 
     # if configs.data has an attribute called 'angles', use it, otherwise set to None
     angles = getattr(data_config, 'angles', None)
@@ -92,17 +85,16 @@ def predict(config_yaml, config_path, iteration=-1, crop_size=None, batch_size=0
                                 angle_max_set=angle_max_set,
                                 angle_min_set=angle_min_set,
                                 angles_set=None,  # Set to specific angles if needed
-                                save_path=save_path
+                                save_path=save_dir_reconstructions
                                 )
 
-    model_save_path = os.path.join(save_path, 'model')
+    model_save_path = os.path.join(data_config.save_dir, 'model')
+    iteration = predict_config.iter_load
     if iteration == -1:
         iteration = get_latest_iteration(model_save_path)
     if iteration == -1:
         raise ValueError(f"No saved model found in {model_save_path}")
     model_path = os.path.join(model_save_path, f'model_iteration_{iteration}.pt')
-    # Load the model weights
-    model_path = os.path.join(model_path, f'model_iteration_{iteration}.pt')
     trainer.load_model(model_path)
     trainer.load_data(vol_paths_1=path_1,
                     vol_paths_2=path_2,
@@ -112,7 +104,7 @@ def predict(config_yaml, config_path, iteration=-1, crop_size=None, batch_size=0
     vol_est_list = trainer.predict_dir(**configs.predict_params)
     for i in range(len(vol_est_list)):
         # Save the estimated volume
-        vol_save_path = os.path.join(save_path, f"volume_{i}.mrc")
+        vol_save_path = os.path.join(save_dir_reconstructions, f"volume_{i}.mrc")
         out = mrcfile.new(vol_save_path,overwrite=True)
         out.set_data(np.moveaxis(vol_est_list[i].astype(np.float32),2,0))
         out.close()

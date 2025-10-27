@@ -38,11 +38,13 @@ train_params:
   num_workers: 8 # number of workers available for the dataloader.
 
 predict_params:
+  save_dir_reconstructions: None # where to save the reconstructions. Default is same as data.save_dir.
   batch_size: 5 # Inference batch size. Reduce if memory issue.
   stride: 36 # Number of pixel between two reconstructed subtomograms. Overlap is handled by averaging.
   pre_pad: true # Pad the original subtomograms with 0.
   pre_pad_size: null # Size of padding to apply to the full tomogram.
   avg_pool: false  # Use average pooling to smooth the input tomogram to process.
+  iter_load: -1 # iteration of the model to load, -1 is the latest.
 
 model_params:
   name: "unet3d_bf" # Name of the model. Only "unet3d_bf" is supported at the moment.

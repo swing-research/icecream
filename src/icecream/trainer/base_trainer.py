@@ -142,73 +142,73 @@ class BaseTrainer:
         w_t = torch.tensor(w, dtype=torch.float32, device=self.device)
         return w_t
 
-    def load_data_single_volume(self, vol_paths_1, vol_paths_2, vol_mask_path=None, use_mask=False, mask_frac=0.3):
-
-        """
-        Load data from the given volume paths.
-        Args:
-            vol_paths_1: Single path to the first set of volumes.
-            vol_paths_2: Single path to the second set of volumes.
-            vol_mask_path (str, optional): Path to the volume mask. Defaults to None.
-        """
-        self.vol_paths_1 = vol_paths_1
-        self.vol_paths_2 = vol_paths_2
-        self.vol_mask_path = vol_mask_path
-
-        if len(vol_paths_1) != len(vol_paths_2):
-            raise ValueError("The number of volume paths for vol_paths_1 and vol_paths_2 must be the same.")
-        if len(vol_paths_1) > 1:
-            # raise not implemented error
-            raise NotImplementedError(
-                "Loading multiple volumes is not implemented yet. Please provide a single volume path for each set.")
-
-        if len(vol_paths_1) == 1:
-            with mrcfile.open(vol_paths_1[0]) as mrc:
-                vol_1 = mrc.data
-            vol_1 = np.moveaxis(vol_1, 0, 2).astype(np.float32)
-            vol_1_t = torch.tensor(vol_1, dtype=torch.float32, device='cpu')
-            vol_1_t = self.normalize_volume(vol_1_t)
-
-            with mrcfile.open(vol_paths_2[0]) as mrc:
-                vol_2 = mrc.data
-            vol_2 = np.moveaxis(vol_2, 0, 2).astype(np.float32)
-            vol_2_t = torch.tensor(vol_2, dtype=torch.float32, device='cpu')
-            vol_2_t = self.normalize_volume(vol_2_t)
-
-        if vol_mask_path is not None:
-            with mrcfile.open(vol_mask_path) as mrc:
-                vol_mask = mrc.data
-            vol_mask = np.moveaxis(vol_mask, 0, 2).astype(np.float32)
-            vol_mask_t = torch.tensor(vol_mask, dtype=torch.float32, device='cpu')
-        else:
-            if use_mask:
-                vol_avg = ((vol_1_t + vol_2_t) / 2).cpu().numpy()
-                #TODO: add these parameters to the config
-                vol_mask = make_mask(vol_avg, mask_boundary=None, side=5, density_percentage=50., std_percentage=50)
-                vol_mask_t = torch.tensor(vol_mask, dtype=torch.float32, device=self.device)
-
-            else:
-                vol_mask_t = None
-                mask_frac = 0.0
-
-            if hasattr(self.configs, 'window_type') is False:
-                self.configs.window_type = 'boxcar'
-
-        self.vol_data = singleVolume(volume_1=vol_1_t,
-                                     volume_2=vol_2_t,
-                                     wedge=self.wedge_input,
-                                     mask=vol_mask_t,
-                                     mask_frac=mask_frac,
-                                     crop_size=self.crop_size,
-                                     use_flips=self.configs.use_flips,
-                                     normalize_crops=self.configs.normalize_crops,
-                                     upsample_volume=self.configs.upsample_volume,
-                                     window_type=self.configs.window_type,
-                                     min_distance=self.configs.min_distance,
-                                     device=self.device
-                                     )
-
-        self.k_sets = self.vol_data.k_sets
+    # def load_data_single_volume(self, vol_paths_1, vol_paths_2, vol_mask_path=None, use_mask=False, mask_frac=0.3):
+    #
+    #     """
+    #     Load data from the given volume paths.
+    #     Args:
+    #         vol_paths_1: Single path to the first set of volumes.
+    #         vol_paths_2: Single path to the second set of volumes.
+    #         vol_mask_path (str, optional): Path to the volume mask. Defaults to None.
+    #     """
+    #     self.vol_paths_1 = vol_paths_1
+    #     self.vol_paths_2 = vol_paths_2
+    #     self.vol_mask_path = vol_mask_path
+    #
+    #     if len(vol_paths_1) != len(vol_paths_2):
+    #         raise ValueError("The number of volume paths for vol_paths_1 and vol_paths_2 must be the same.")
+    #     if len(vol_paths_1) > 1:
+    #         # raise not implemented error
+    #         raise NotImplementedError(
+    #             "Loading multiple volumes is not implemented yet. Please provide a single volume path for each set.")
+    #
+    #     if len(vol_paths_1) == 1:
+    #         with mrcfile.open(vol_paths_1[0]) as mrc:
+    #             vol_1 = mrc.data
+    #         vol_1 = np.moveaxis(vol_1, 0, 2).astype(np.float32)
+    #         vol_1_t = torch.tensor(vol_1, dtype=torch.float32, device='cpu')
+    #         vol_1_t = self.normalize_volume(vol_1_t)
+    #
+    #         with mrcfile.open(vol_paths_2[0]) as mrc:
+    #             vol_2 = mrc.data
+    #         vol_2 = np.moveaxis(vol_2, 0, 2).astype(np.float32)
+    #         vol_2_t = torch.tensor(vol_2, dtype=torch.float32, device='cpu')
+    #         vol_2_t = self.normalize_volume(vol_2_t)
+    #
+    #     if vol_mask_path is not None:
+    #         with mrcfile.open(vol_mask_path) as mrc:
+    #             vol_mask = mrc.data
+    #         vol_mask = np.moveaxis(vol_mask, 0, 2).astype(np.float32)
+    #         vol_mask_t = torch.tensor(vol_mask, dtype=torch.float32, device='cpu')
+    #     else:
+    #         if use_mask:
+    #             vol_avg = ((vol_1_t + vol_2_t) / 2).cpu().numpy()
+    #             #TODO: add these parameters to the config
+    #             vol_mask = make_mask(vol_avg, mask_boundary=None, side=5, density_percentage=50., std_percentage=50)
+    #             vol_mask_t = torch.tensor(vol_mask, dtype=torch.float32, device=self.device)
+    #
+    #         else:
+    #             vol_mask_t = None
+    #             mask_frac = 0.0
+    #
+    #         if hasattr(self.configs, 'window_type') is False:
+    #             self.configs.window_type = 'boxcar'
+    #
+    #     self.vol_data = singleVolume(volume_1=vol_1_t,
+    #                                  volume_2=vol_2_t,
+    #                                  wedge=self.wedge_input,
+    #                                  mask=vol_mask_t,
+    #                                  mask_frac=mask_frac,
+    #                                  crop_size=self.crop_size,
+    #                                  use_flips=self.configs.use_flips,
+    #                                  normalize_crops=self.configs.normalize_crops,
+    #                                  upsample_volume=self.configs.upsample_volume,
+    #                                  window_type=self.configs.window_type,
+    #                                  min_distance=self.configs.min_distance,
+    #                                  device=self.device
+    #                                  )
+    #
+    #     self.k_sets = self.vol_data.k_sets
 
     def load_volume(self, vol_path):
         """
@@ -505,7 +505,8 @@ class BaseTrainer:
                     batch_size=2,
                     pre_pad=True,
                     pre_pad_size=None,
-                    avg_pool=False):
+                    avg_pool=False,
+                    **kwargs):
         """
         Predict using the trained model.
         This method should be overridden by subclasses if needed.
@@ -533,18 +534,15 @@ class BaseTrainer:
             self.window_type = None
 
         vol_est_list = []
-        for i in range(len(self.vol_data.volume_1)):
+        for i in range(len(self.vol_data.volume_1_set)):
             wedge_used = self.wedge_input_set[i]
             vol_est_1, _ = inference(model=self.model,
-                                     vol_input=self.vol_data.volume_1[i],
+                                     vol_input=self.vol_data.volume_1_set[i],
                                      size=crop_size,
                                      stride=stride,
                                      batch_size=batch_size,
                                      window=self.window,
-                                     window_type=self.window_type,
-                                     run_multi=None,
                                      wedge=wedge_used,
-                                     update_missing_wedge=False,
                                      pre_pad=pre_pad,
                                      pre_pad_size=pre_pad_size,
                                      device=self.device,
@@ -552,18 +550,15 @@ class BaseTrainer:
                                      avg_pool=avg_pool)
 
             vol_est_2, _ = inference(model=self.model,
-                                     vol_input=self.vol_data.volume_2[i],
+                                     vol_input=self.vol_data.volume_2_set[i],
                                      size=crop_size,
                                      stride=stride,
                                      batch_size=batch_size,
                                      window=self.window,
-                                     window_type=self.window_type,
-                                     run_multi=None,
                                      wedge=wedge_used,
-                                     update_missing_wedge=False,
                                      pre_pad=pre_pad,
-                                     device=self.device,
                                      pre_pad_size=pre_pad_size,
+                                     device=self.device,
                                      upsampled_=self.configs.upsample_volume,
                                      avg_pool=avg_pool)
             vol_est = (vol_est_1 + vol_est_2) / 2

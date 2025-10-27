@@ -126,7 +126,7 @@ icecream predict --config /path/to/config.json \
   --tomo1 /path/to/tomogram_1.mrc \
   --angles /path/to/angles.tlt \
   --save_dir /path/to/save/dir \  # directory to save output if different from training (optional)
-  --iteration 50000  # iteration to use for reconstruction (optional)
+  --iter_load 50000  # iteration to use for reconstruction (optional)
 ```
 Note that the `config.json` file is generated during training and contains the model and training parameters and saved in the training save directory. You can also use a YAML config file instead of JSON. 
 
