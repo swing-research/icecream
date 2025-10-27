@@ -9,6 +9,8 @@ Icecream provides a theoretically grounded and computationally efficient method 
 ### 🧊 Note
 The codebase is under active development. 
 
+⚠️ **Important**: PyTorch 2.9 currently has a bug affecting half-precision (FP16) training. Please use PyTorch 2.8 or earlier for now. See [this issue](https://github.com/pytorch/pytorch/issues/166122).
+
 #### Updates 
 Date: 23.10.2025
  - Added save_tomo_n_iterations, to compute and save the current reconstruction during training
