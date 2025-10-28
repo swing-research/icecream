@@ -29,12 +29,19 @@ class EquivariantTrainer(BaseTrainer):
         self.wedge_input_set = []
         self.wedge_ref_set = []
         for i in range(len(self.angle_max_set)):
-            wedge_full = self.initialize_wedge(self.angle_max_set[i], self.angle_min_set[i], self.wedge_size).cpu()
+            if self.load_device:
+                wedge_full = self.initialize_wedge(self.angle_max_set[i], self.angle_min_set[i], self.wedge_size)
+            else:
+                wedge_full = self.initialize_wedge(self.angle_max_set[i], self.angle_min_set[i], self.wedge_size).cpu()
             self.wedge_full_set.append(wedge_full)
             wedge_input = self.get_real_binary_filter(wedge_full[:-1, :-1, :-1])
             self.wedge_input_set.append(wedge_input)
-            wedge_ref = self.initialize_wedge(self.angle_max_set[i], self.angle_min_set[i], self.crop_size_eq).cpu()[
-                        :-1, :-1, :-1]
+            if self.load_device:
+                wedge_ref = self.initialize_wedge(self.angle_max_set[i], self.angle_min_set[i], self.crop_size_eq).cpu()[
+                            :-1, :-1, :-1]
+            else:
+                wedge_ref = self.initialize_wedge(self.angle_max_set[i], self.angle_min_set[i], self.crop_size_eq)[
+                            :-1, :-1, :-1]
             wedge_ref = self.get_real_binary_filter(wedge_ref)
             self.wedge_ref_set.append(wedge_ref)
         self.window = self.initialize_window(self.crop_size_eq)

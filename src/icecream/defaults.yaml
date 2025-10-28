@@ -35,7 +35,10 @@ train_params:
   min_distance: 0.5 # Minimum relative difference between rotated and unrotated missing wedge.
   window_type: "boxcar" # Shape of the crop.
   load_device: false # load all the full tomograms on the device. Will be faster but requires more memory.
-  num_workers: 8 # number of workers available for the dataloader.
+  num_workers: 8 # number of workers available for the dataloader. Too high doesn't necessarily mean faster.
+  pretrain_params:
+    use_pretrain: false # Load a given model weigths if true.
+    model_path: None # path to the model weights to load as pre-trained.
 
 predict_params:
   save_dir_reconstructions: None # where to save the reconstructions. Default is same as data.save_dir.
@@ -62,10 +65,6 @@ mask_params:
   mask_tomo_side : 5
   mask_tomo_density_perc : 50
   mask_tomo_std_perc : 50
-
-pretrain_params:
-  use_pretrain: false # Load a given model weigths if true.
-  model_path: None # path to the model weights to load as pre-trained.
 
 debug:
   verbose: false # Save several outputs regarding data pre-processing, training and inference. Will result in a lot of file saved.

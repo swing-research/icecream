@@ -220,7 +220,7 @@ class BaseTrainer:
         """
         vol = mrcfile.open(vol_path).data
         vol = np.moveaxis(vol, 0, 2).astype(np.float32)
-        vol_t = torch.tensor(vol, dtype=torch.float32, device='cpu', requires_grad=False)
+        vol_t = torch.tensor(vol, dtype=torch.float32, device='cpu')
         return self.normalize_volume(vol_t)
 
     def load_data(self, vol_paths_1, vol_paths_2, vol_mask_path=None, use_mask=False, mask_frac=0.3, mask_tomo_side=5, mask_tomo_density_perc=50., mask_tomo_std_perc=50.):
@@ -235,6 +235,8 @@ class BaseTrainer:
         self.vol_paths_2 = vol_paths_2
         self.vol_mask_path = vol_mask_path
 
+        self.n_volumes = len(self.vol_paths_1)
+
         if len(vol_paths_1) != len(vol_paths_2):
             raise ValueError("The number of volume paths for vol_paths_1 and vol_paths_2 must be the same.")
 
@@ -245,8 +247,9 @@ class BaseTrainer:
         for i in range(len(vol_paths_1)):
             vol_1_t = self.load_volume(vol_paths_1[i])
             vol_2_t = self.load_volume(vol_paths_2[i])
-            print(f"Loaded volume {vol_paths_1[i]} and {vol_paths_2[i]}.")
-            print(f"They have shape (x,y,z): {vol_1_t.shape} and {vol_2_t.shape}.")
+            print(f"Loaded volumes: \n {vol_paths_1[i]}\n and\n {vol_paths_2[i]}")
+
+            print(f"They have shape (x,y,z): {list(vol_1_t.shape)} and {list(vol_2_t.shape)}.")
             if vol_mask_path is not None:
                 vol_mask = mrcfile.open(vol_mask_path[i]).data
                 vol_mask = np.moveaxis(vol_mask, 0, 2).astype(np.float32)
@@ -259,25 +262,14 @@ class BaseTrainer:
                 else:
                     vol_mask_t = None
                     mask_frac = 0.0
-            vol_1_set.append(vol_1_t.cpu())
-            vol_2_set.append(vol_2_t.cpu())
+            if self.load_device:
+                vol_1_set.append(vol_1_t.to(self.device))
+                vol_2_set.append(vol_2_t.to(self.device))
+            else:
+                vol_1_set.append(vol_1_t.cpu())
+                vol_2_set.append(vol_2_t.cpu())
             if vol_mask_t is not None:
                 vol_mask_set.append(vol_mask_t.cpu())
-
-            if self.load_device:
-                vol_1_set_gpu = []
-                for vol in vol_1_set:
-                    vol_1_set_gpu.append(vol.to(self.device, non_blocking=True))
-                vol_2_set_gpu = []
-                for vol in vol_2_set:
-                    vol_2_set_gpu.append(vol.to(self.device, non_blocking=True))
-                vol_mask_set_gpu = []
-                for vol in vol_mask_set:
-                    vol_mask_set_gpu.append(vol.to(self.device, non_blocking=True))
-                torch.cuda.synchronize()
-                vol_1_set = vol_1_set_gpu
-                vol_2_set = vol_2_set_gpu
-                vol_mask_set = vol_mask_set_gpu
 
         if len(vol_mask_set) == 0:
             vol_mask_set = None
@@ -290,15 +282,25 @@ class BaseTrainer:
                                     mask_frac=mask_frac,
                                     crop_size=self.crop_size,
                                     use_flips=self.configs.use_flips,
-                                    n_crops=1,
+                                    n_crops=self.configs.batch_size,
                                     normalize_crops=self.configs.normalize_crops,
                                     device=self.device)
+        if self.n_volumes == 0:
+            # Faster to have a single worker if only a single volume
+            self.configs.num_workers = 0
 
-        self.vol_loader = DataLoader(self.vol_data,
-                                     batch_size=self.configs.batch_size,
-                                     shuffle=True,
-                                     num_workers=self.configs.num_workers,
-                                     pin_memory=True)
+        if self.load_device: # then fit all on GPU and use one worker and don't pin the memory
+            self.vol_loader = DataLoader(self.vol_data,
+                                         batch_size=self.configs.batch_size,
+                                         shuffle=True,
+                                         num_workers=0,
+                                         pin_memory=False)
+        else:
+            self.vol_loader = DataLoader(self.vol_data,
+                                         batch_size=self.configs.batch_size,
+                                         shuffle=True,
+                                         num_workers=self.configs.num_workers,
+                                         pin_memory=True)
 
         self.k_sets = self.vol_data.k_sets
 
@@ -343,6 +345,10 @@ class BaseTrainer:
         ema = None
         alpha = 0.1  # EMA smoothing for display
 
+
+        print("####################")
+        print("  Started training the model.")
+        print("####################")
         # Actual training loop
         for iteration in range(iterations):
             for data in self.vol_loader:
@@ -367,7 +373,7 @@ class BaseTrainer:
 
                 loss_val = float(loss.detach().item())
                 ema = loss_val if ema is None else (alpha * loss_val + (1 - alpha) * ema)
-                #cur_lr = self.optimizer.param_groups[0]["lr"]
+                # cur_lr = self.optimizer.param_groups[0]["lr"]
                 pbar.set_postfix(iteration=iteration + 1, ema_loss=f"{ema:.4f}", loss=f"{loss_val:.4f}")
                 pbar.update(1)
                 if iteration > 0 and iteration % self.configs.compute_avg_loss_n_iterations == 0:
@@ -381,11 +387,17 @@ class BaseTrainer:
                         vol_est_list = self.predict_dir(**configs.predict_params)
                         for i in range(len(vol_est_list)):
                             # Save the estimated volume
-                            vol_est_name = 'latest_prediction_num_'+str(i).zfill(4)+'.mrc'
+                            vol_est_name = 'latest_prediction_num_' + str(i).zfill(4) + '.mrc'
                             vol_save_path = os.path.join(self.save_path, vol_est_name)
                             out = mrcfile.new(vol_save_path, overwrite=True)
                             out.set_data(np.moveaxis(vol_est_list[i].astype(np.float32), 2, 0))
                             out.close()
+
+
+
+        print("####################")
+        print("  Finished training the model.")
+        print("####################")
 
     def compute_loss(self, inp_1, inp_2, idx):
         """
@@ -410,7 +422,6 @@ class BaseTrainer:
                                                                criteria=self.criteria,
                                                                use_fourier=self.configs.use_fourier,
                                                                window=self.window)
-
         with torch.no_grad():
             self.loss_set.append(loss.item())
             diff_loss = torch.mean(torch.abs(est_1 - est_2))

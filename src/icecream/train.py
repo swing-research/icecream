@@ -91,8 +91,8 @@ def train_model(config_yaml):
     print("Tomograms loaded.")
 
     # Possibly use pre-trained model
-    if hasattr(configs, 'pretrain_params'):
-        pretrain_params = SimpleNamespace(**configs.pretrain_params)
+    if hasattr(configs.train_params, 'pretrain_params'):
+        pretrain_params = SimpleNamespace(**configs.train_params.pretrain_params)
         if pretrain_params.use_pretrain:
             print("Using pretrained model parameters.")
             model_path = pretrain_params.model_path
@@ -113,14 +113,14 @@ def train_model(config_yaml):
 
     # Evaluate the model and reconstruct the tomogram
     vol_est = trainer.predict_dir(**configs.predict_params)
-    # Save the estimated volume
-    name = combine_names(path_1[0], path_2[0])
-    vol_save_path = os.path.join(save_path, name)
-    out = mrcfile.new(vol_save_path, overwrite=True)
-    out.set_data(np.moveaxis(vol_est.astype(np.float32), 2, 0))
-    out.close()
-    print(f"Volume saved at: {os.path.join(save_path, name)}")
-
+    for i in range(len(vol_est)):
+        # Save the estimated volume
+        name = combine_names(path_1[i], path_2[i])
+        vol_save_path = os.path.join(save_path, name)
+        out = mrcfile.new(vol_save_path, overwrite=True)
+        out.set_data(np.moveaxis(vol_est[i].astype(np.float32), 2, 0))
+        out.close()
+        print(f"Volume saved at: {os.path.join(save_path, name)}")
 
 def main(config: Optional[Path] = typer.Option(None, "--config", "-c", help="Path to YAML config file")):
     """Entry point mirroring the old argparse interface."""

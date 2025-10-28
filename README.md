@@ -56,6 +56,21 @@ icecream --help
 It should display the two main commands: `train` and `predict`.
 
 
+### Update
+To get the latest version of ICECREAM, make sure to be on the main branch 
+```bash
+git chechout main
+```
+and run 
+```bash
+git pull
+```
+
+### Use previous version
+To use the first version, i.e. v0.1, you can select the appropriate Github branch:
+```bash
+git checkout v0.1
+```
 
 ## Usage
 To train the model, use the `train` command. Note that the command also reconstructs the volume after training. However, you can use the `predict` command to reconstruct the volume from a trained model using intermediate checkpoints.

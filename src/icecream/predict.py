@@ -101,7 +101,13 @@ def predict(config_yaml):
                     vol_mask_path=mask_path)
 
     # Reconstruct each volume in the list
+    print("####################")
+    print("  Started inference.")
+    print("####################")
     vol_est_list = trainer.predict_dir(**configs.predict_params)
+    print("####################")
+    print("  Finished inference.")
+    print("####################")
     for i in range(len(vol_est_list)):
         # Save the estimated volume
         vol_save_path = os.path.join(save_dir_reconstructions, f"volume_{i}.mrc")

@@ -267,8 +267,9 @@ def crop_volumes_mask(volume1, volume_2, mask, mask_frac, cropsize, n_crops):
         if torch.mean(crop_mask) < mask_frac:
             # print('Mask fraction: ',torch.mean(crop_mask))
             continue
-        crops_1.append(volume1[start1:start1 + cropsize, start2:start2 + cropsize, start3:start3 + cropsize])
-        crops_2.append(volume_2[start1:start1 + cropsize, start2:start2 + cropsize, start3:start3 + cropsize])
+
+        crops_1.append(volume1[start1:start1 + cropsize, start2:start2 + cropsize, start3:start3 + cropsize].clone())
+        crops_2.append(volume_2[start1:start1 + cropsize, start2:start2 + cropsize, start3:start3 + cropsize].clone())
         count = count + 1
     return crops_1, crops_2
 
@@ -952,7 +953,7 @@ def combine_names(vol_1, vol_2):
         combined_name = name_2 + '_' + name_1
 
     # add ei as the suffix
-    combined_name = combined_name + '_ei'
+    combined_name = combined_name + '_icecream'
 
     return combined_name + '.mrc'
 
