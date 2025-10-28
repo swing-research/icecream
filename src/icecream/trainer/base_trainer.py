@@ -132,6 +132,8 @@ class BaseTrainer:
             vol_paths_2 (list): List of paths to the second set of volumes.
             vol_mask_path (str, optional): Path to the volume mask. Defaults to None.
         """
+        print(vol_paths_1)
+        print(vol_paths_2)
         self.vol_paths_1 = vol_paths_1
         self.vol_paths_2 = vol_paths_2
         self.vol_mask_path = vol_mask_path

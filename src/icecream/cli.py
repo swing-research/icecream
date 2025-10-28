@@ -90,7 +90,7 @@ def cli_train(
     if tomo0: cli_updates["data"]["tomo0"] = tomo0
     if tomo1: cli_updates["data"]["tomo1"] = tomo1
     if mask: cli_updates["data"]["mask"] = str(mask)
-    if angles: cli_updates["data"]["angles"] = str(angles)
+    if angles: cli_updates["data"]["angles"] = [str(angles)]
     if tilt_min is not None: cli_updates["data"]["tilt_min"] = tilt_min
     if tilt_max is not None: cli_updates["data"]["tilt_max"] = tilt_max
     if save_dir: cli_updates["data"]["save_dir"] = str(save_dir)
