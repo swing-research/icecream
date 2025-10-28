@@ -387,7 +387,9 @@ class BaseTrainer:
                         vol_est_list = self.predict_dir(**configs.predict_params)
                         for i in range(len(vol_est_list)):
                             # Save the estimated volume
-                            vol_est_name = 'latest_prediction_num_' + str(i).zfill(4) + '.mrc'
+                            name_1 = self.vol_paths_1[i].split('/')[-1].split('.mrc')[0]
+                            name_2 = self.vol_paths_2[i].split('/')[-1].split('.mrc')[0]
+                            vol_est_name = 'latest_prediction_' + name_1 +'_'+ name_2 + '.mrc'
                             vol_save_path = os.path.join(self.save_path, vol_est_name)
                             out = mrcfile.new(vol_save_path, overwrite=True)
                             out.set_data(np.moveaxis(vol_est_list[i].astype(np.float32), 2, 0))
