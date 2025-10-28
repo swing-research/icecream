@@ -964,7 +964,12 @@ def split_tilt_series(path_mrc, path_angle=None, tilt_min=None, tilt_max=None, s
     """
     if save_dir is None:
         save_dir = path_mrc[:path_mrc.rfind(os.path.sep)]
-        name_ts = path_mrc[1+path_mrc.rfind(os.path.sep):path_mrc.rfind('.')]
+    if not os.path.exists(save_dir):
+        os.makedirs(save_dir)
+        print(f"Created directory: {save_dir}")
+    else:
+        print(f"Directory already exists: {save_dir}")
+    name_ts = path_mrc[1+path_mrc.rfind(os.path.sep):path_mrc.rfind('.')]
 
     # Split the tilt-series
     ts = np.float32(mrcfile.open(path_mrc, permissive=True).data)
@@ -983,8 +988,10 @@ def split_tilt_series(path_mrc, path_angle=None, tilt_min=None, tilt_max=None, s
     out.close()
     out = mrcfile.new(os.path.join(save_dir, name_ts + "_split2"+path_mrc[path_mrc.rfind('.'):]), ts2.astype(np.float32), overwrite=True)
     out.close()
+    print("Tilt-series has been split.")
 
     # Split the angles if needed
+    angles = None
     if path_angle is not None:
         if os.path.isfile(path_angle):
             angles = np.loadtxt(path_angle)
@@ -1006,4 +1013,5 @@ def split_tilt_series(path_mrc, path_angle=None, tilt_min=None, tilt_max=None, s
         else:
             np.savetxt(os.path.join(save_dir, name_ts + "_angles1.tlt"), angles1, fmt="%.6f")
             np.savetxt(os.path.join(save_dir, name_ts + "_angles2.tlt"), angles2, fmt="%.6f")
+        print("Split angle file has been saved.")
 
