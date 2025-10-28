@@ -976,12 +976,18 @@ def split_tilt_series(path_mrc, path_angle=None, tilt_min=None, tilt_max=None, s
     # Assume that the smallest dimension corresponds to the tilts
     indx_tilt = np.argmin(ts.shape)
     if indx_tilt == 0:
+        if ts.shape[0]%2 == 1:
+            ts = ts[1:]
         ts1 = ts[::2]
         ts2 = ts[1::2]
     elif indx_tilt == 1:
+        if ts.shape[1]%2 == 1:
+            ts = ts[1:]
         ts1 = ts[:,::2]
         ts2 = ts[:,1::2]
     elif indx_tilt == 2:
+        if ts.shape[2]%2 == 1:
+            ts = ts[1:]
         ts1 = ts[:,:,::2]
         ts2 = ts[:,:,1::2]
     out = mrcfile.new(os.path.join(save_dir, name_ts + "_split1"+path_mrc[path_mrc.rfind('.'):]), ts1.astype(np.float32), overwrite=True)
@@ -1001,6 +1007,8 @@ def split_tilt_series(path_mrc, path_angle=None, tilt_min=None, tilt_max=None, s
     else:
         angles = None
     if angles is not None:
+        if angles.shape[0]%2 == 1:
+            angles = angles[1:]
         angles1 = angles[::2]
         angles2 = angles[1::2]
         if os.path.isfile(path_angle):

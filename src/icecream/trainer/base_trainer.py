@@ -12,10 +12,8 @@ from tqdm import tqdm
 from torch.utils.data import DataLoader
 from icecream.utils.mask_util import make_mask
 from icecream.dataset.multi_volumes import MultiVolume
-from icecream.dataset.volumes import singleVolume
 from icecream.utils.inference_util import inference
 from icecream.utils.utils import get_wedge_3d_new, symmetrize_3D, get_measurement, fourier_loss
-
 
 class BaseTrainer:
     def __init__(self,
@@ -70,15 +68,8 @@ class BaseTrainer:
             wedge_eq = self.initialize_wedge(self.angle_max_set[i],self.angle_min_set[i],self.crop_size_eq).cpu()
             self.wedge_input_set.append(wedge_input)
             self.wedge_eq_set.append(wedge_eq)
-        # theta = torch.zeros(1,3,4)
-        # theta[:,:,:3] = torch.eye(3)
-        # self.grid = torch.nn.functional.affine_grid(theta, (1,1,self.crop_size,
-        #                                                     self.crop_size,
-        #                                                     self.crop_size)).to(self.device)
-
 
     def get_real_binary_filter(self, binary_filter):
-
         binary_filter_sym = symmetrize_3D(binary_filter)
         binary_filter_t = (binary_filter + binary_filter_sym) / 2
         binary_filter_t[binary_filter_t > 0.1] = 1
@@ -86,7 +77,6 @@ class BaseTrainer:
         return binary_filter_t
 
     def get_real_binary_filters_batch(self, binary_filters):
-
         """
         Applies the get_real_binary_filter to each filter in the batch.
         """
@@ -98,32 +88,11 @@ class BaseTrainer:
     def normalize_volume(self, vol):
         return (vol - vol.mean()) / (vol.std() + 1e-8)
 
-    # def initialize_wedge(self, crop_size, wedge_support=None):
-    #     """
-    #     Initialize the wedge for the model.
-    #     This method should be overridden by subclasses if needed.
-    #     """
-    #
-    #     if wedge_support is None:
-    #         wedge_support = self.configs.wedge_low_support
-    #     wedge, ball = get_wedge_3d_new(crop_size,
-    #                                    max_angle=self.angle_max,
-    #                                    min_angle=self.angle_min,
-    #                                    rotation=0,
-    #                                    low_support=wedge_support,
-    #                                    use_spherical_support=self.configs.use_spherical_support)
-    #     wedge_t = torch.tensor(wedge, dtype=torch.float32, device=self.device)
-    #     wedge_t_sym = symmetrize_3D(wedge_t)
-    #     wedge_t = (wedge_t_sym + wedge_t) / 2
-    #     wedge_t[wedge_t > 0.1] = 1
-    #
-    #     return wedge_t
     def initialize_wedge(self, angle_max, angle_min, crop_size):
         """
         Initialize the wedge for the model.
         This method should be overridden by subclasses if needed.
         """
-
         assert angle_min < angle_max, "angle_min should be less than angle_max"
         wedge,ball = get_wedge_3d_new(crop_size,
                                       max_angle = angle_max,
@@ -141,74 +110,6 @@ class BaseTrainer:
         w[crop_size // 4:-crop_size // 4, crop_size // 4:-crop_size // 4, crop_size // 4:-crop_size // 4] = 1
         w_t = torch.tensor(w, dtype=torch.float32, device=self.device)
         return w_t
-
-    # def load_data_single_volume(self, vol_paths_1, vol_paths_2, vol_mask_path=None, use_mask=False, mask_frac=0.3):
-    #
-    #     """
-    #     Load data from the given volume paths.
-    #     Args:
-    #         vol_paths_1: Single path to the first set of volumes.
-    #         vol_paths_2: Single path to the second set of volumes.
-    #         vol_mask_path (str, optional): Path to the volume mask. Defaults to None.
-    #     """
-    #     self.vol_paths_1 = vol_paths_1
-    #     self.vol_paths_2 = vol_paths_2
-    #     self.vol_mask_path = vol_mask_path
-    #
-    #     if len(vol_paths_1) != len(vol_paths_2):
-    #         raise ValueError("The number of volume paths for vol_paths_1 and vol_paths_2 must be the same.")
-    #     if len(vol_paths_1) > 1:
-    #         # raise not implemented error
-    #         raise NotImplementedError(
-    #             "Loading multiple volumes is not implemented yet. Please provide a single volume path for each set.")
-    #
-    #     if len(vol_paths_1) == 1:
-    #         with mrcfile.open(vol_paths_1[0]) as mrc:
-    #             vol_1 = mrc.data
-    #         vol_1 = np.moveaxis(vol_1, 0, 2).astype(np.float32)
-    #         vol_1_t = torch.tensor(vol_1, dtype=torch.float32, device='cpu')
-    #         vol_1_t = self.normalize_volume(vol_1_t)
-    #
-    #         with mrcfile.open(vol_paths_2[0]) as mrc:
-    #             vol_2 = mrc.data
-    #         vol_2 = np.moveaxis(vol_2, 0, 2).astype(np.float32)
-    #         vol_2_t = torch.tensor(vol_2, dtype=torch.float32, device='cpu')
-    #         vol_2_t = self.normalize_volume(vol_2_t)
-    #
-    #     if vol_mask_path is not None:
-    #         with mrcfile.open(vol_mask_path) as mrc:
-    #             vol_mask = mrc.data
-    #         vol_mask = np.moveaxis(vol_mask, 0, 2).astype(np.float32)
-    #         vol_mask_t = torch.tensor(vol_mask, dtype=torch.float32, device='cpu')
-    #     else:
-    #         if use_mask:
-    #             vol_avg = ((vol_1_t + vol_2_t) / 2).cpu().numpy()
-    #             #TODO: add these parameters to the config
-    #             vol_mask = make_mask(vol_avg, mask_boundary=None, side=5, density_percentage=50., std_percentage=50)
-    #             vol_mask_t = torch.tensor(vol_mask, dtype=torch.float32, device=self.device)
-    #
-    #         else:
-    #             vol_mask_t = None
-    #             mask_frac = 0.0
-    #
-    #         if hasattr(self.configs, 'window_type') is False:
-    #             self.configs.window_type = 'boxcar'
-    #
-    #     self.vol_data = singleVolume(volume_1=vol_1_t,
-    #                                  volume_2=vol_2_t,
-    #                                  wedge=self.wedge_input,
-    #                                  mask=vol_mask_t,
-    #                                  mask_frac=mask_frac,
-    #                                  crop_size=self.crop_size,
-    #                                  use_flips=self.configs.use_flips,
-    #                                  normalize_crops=self.configs.normalize_crops,
-    #                                  upsample_volume=self.configs.upsample_volume,
-    #                                  window_type=self.configs.window_type,
-    #                                  min_distance=self.configs.min_distance,
-    #                                  device=self.device
-    #                                  )
-    #
-    #     self.k_sets = self.vol_data.k_sets
 
     def load_volume(self, vol_path):
         """
@@ -271,7 +172,7 @@ class BaseTrainer:
             if vol_mask_t is not None:
                 vol_mask_set.append(vol_mask_t.cpu())
 
-        if len(vol_mask_set) == 0:
+        if len(vol_mask_set) == 1:
             vol_mask_set = None
 
         self.vol_data = MultiVolume(volume_1_set=vol_1_set,
@@ -303,8 +204,6 @@ class BaseTrainer:
                                          pin_memory=True)
 
         self.k_sets = self.vol_data.k_sets
-
-
 
     def get_estimates(self, inp_1, inp_2):
         """
@@ -344,7 +243,6 @@ class BaseTrainer:
         pbar = tqdm(total=iterations, desc="Training", dynamic_ncols=True, disable=disable_bar)
         ema = None
         alpha = 0.1  # EMA smoothing for display
-
 
         print("####################")
         print("  Started training the model.")
@@ -394,9 +292,6 @@ class BaseTrainer:
                             out = mrcfile.new(vol_save_path, overwrite=True)
                             out.set_data(np.moveaxis(vol_est_list[i].astype(np.float32), 2, 0))
                             out.close()
-
-
-
         print("####################")
         print("  Finished training the model.")
         print("####################")
@@ -458,7 +353,6 @@ class BaseTrainer:
         Args:
             iteration (int): Current iteration number.
         """
-
         if iteration is None:
             iteration = self.configs.iterations
         # make sure the save path exists
