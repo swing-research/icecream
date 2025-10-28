@@ -70,8 +70,8 @@ def cli_train(
                                                  help="(Optional) Training batch size. Reduce if memory issue. Default is 8."),
         crop_size: Optional[int] = typer.Option(None,
                                                 help="(Optional) Crop size of subtomograms for prediction. Default is 72x72."),
-        scale: Optional[float] = typer.Option(None,
-                                              help="(Optional) Scaling factor. Increase to get more regularization. Default is 2."),
+        eq_weight: Optional[float] = typer.Option(None,
+                                              help="(Optional) Equivariant regularization weight. Increase to get more regularization. Default is 2."),
         iterations: Optional[int] = typer.Option(None, help="(Optional) Number of iterations. Default is 50000."),
         save_n_iterations: Optional[int] = typer.Option(None,
                                                         help="(Optional) Checkpoint for the model every N iterations. Default is 5000."),
@@ -99,7 +99,7 @@ def cli_train(
     if crop_size is not None: cli_updates["train_params"]["crop_size"] = crop_size
     if iterations is not None: cli_updates["train_params"]["iterations"] = iterations
     if save_n_iterations is not None: cli_updates["train_params"]["save_n_iterations"] = save_n_iterations
-    if scale is not None: cli_updates["train_params"]["scale"] = scale
+    if eq_weight is not None: cli_updates["train_params"]["eq_weight"] = eq_weight
     if compute_avg_loss_n_iterations is not None:
         cli_updates["train_params"]["compute_avg_loss_n_iterations"] = compute_avg_loss_n_iterations
     if save_tomo_n_iterations is not None:

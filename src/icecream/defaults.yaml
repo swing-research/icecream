@@ -11,7 +11,7 @@ train_params:
   device: 0 # GPU number or device name. Only a single GPU is supported at the moment.
   crop_size: 72 # Size of the sub-tomograms extracted to train. Only cubic sub-tomograms are allowed.
   iterations: 50000 # Total number of training iterations.
-  scale: 2.0 # Scaling factor. Increase to get more regularization.
+  eq_weight: 2.0 # Equivariant regularization weight. Increase to get more regularization.
   batch_size: 8 # Training batch size. Reduce if memory issue.
   seed: 42 # Seed number for reproducibility.
   compile: false # Use toch.compile to speed up training at the cost of compilation time. Still under validation.

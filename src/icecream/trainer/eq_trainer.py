@@ -83,7 +83,7 @@ class EquivariantTrainer(BaseTrainer):
         est_2_rot_inp = get_measurement(est_2_rot, wedge_input)
         est_1_rot_est, est_2_rot_est = self.get_estimates(est_1_rot_inp, est_2_rot_inp)
         if self.configs.eq_use_direct:
-            equi_loss_est = (self.criteria(est_2_ref, est_1_rot_est) + self.criteria(est_1_ref, est_2_rot_est))* self.configs.scale
+            equi_loss_est = (self.criteria(est_2_ref, est_1_rot_est) + self.criteria(est_1_ref, est_2_rot_est))* self.configs.eq_weight
         else:
             equi_loss_est = (fourier_loss_batch(est_2_ref,est_1_rot_est,
                             wedge_rot, 
@@ -96,7 +96,7 @@ class EquivariantTrainer(BaseTrainer):
                                                     self.criteria,
                                                     use_fourier=self.configs.use_fourier,
                                                     view_as_real=self.configs.view_as_real,
-                                                    window=self.window))*self.configs.scale
+                                                    window=self.window))*self.configs.eq_weight
         loss = obs_loss + equi_loss_est
         equi_loss = equi_loss_est
 
