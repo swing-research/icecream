@@ -4,11 +4,13 @@ Base trainer class for training models using nois2noise type loss
 
 import os
 import sys
+import csv
 import json
 import torch
 import mrcfile
 import numpy as np
 from tqdm import tqdm
+import matplotlib.pyplot as plt
 from torch.utils.data import DataLoader
 from icecream.utils.mask_util import make_mask
 from icecream.dataset.multi_volumes import MultiVolume
@@ -280,6 +282,22 @@ class BaseTrainer:
                 pbar.update(1)
                 if iteration > 0 and iteration % self.configs.compute_avg_loss_n_iterations == 0:
                     self.compute_average_loss()
+
+                    plt.semilogy(np.arange(0, iteration * self.n_volumes, self.configs.compute_avg_loss_n_iterations)[1:],
+                                 np.array(self.loss_avg_set), label='Average loss')
+                    plt.semilogy(np.arange(0, iteration * self.n_volumes, self.configs.compute_avg_loss_n_iterations)[1:],
+                                 np.array(self.equi_loss_avg_set), label='Equivariant loss')
+                    plt.semilogy(np.arange(0, iteration * self.n_volumes, self.configs.compute_avg_loss_n_iterations)[1:],
+                                 np.array(self.obs_loss_avg_set), label='Data-fidelity loss')
+                    plt.savefig(os.path.join(self.save_path, 'losses.png'), dpi=300, bbox_inches='tight')
+                    plt.close()
+
+                    filename = os.path.join(self.save_path, 'losses.csv')
+                    with open(filename, mode="w", newline="") as f:
+                        writer = csv.writer(f)
+                        writer.writerow(["Iterations", "Avg loss", "Equivariant loss", "Data-fidelity loss"])  # header
+                        for row in zip(np.arange(0, iteration * self.n_volumes, self.configs.compute_avg_loss_n_iterations)[1:], self.loss_avg_set, self.equi_loss_avg_set, self.obs_loss_avg_set):
+                            writer.writerow(row)
 
                 if iteration > 0 and iteration % self.configs.save_n_iterations == 0:
                     self.save_model(iteration)
