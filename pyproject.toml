@@ -14,7 +14,8 @@ dependencies = [
   "PyYAML>=6",
   "tqdm>=4.66",
   "typer>=0.12",  
-  "h5py>=3.10",       
+  "h5py>=3.10",
+  "matplotlib>=3.8"
 ]
 
 [project.scripts]

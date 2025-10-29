@@ -196,13 +196,13 @@ class BaseTrainer:
 
         if self.load_device: # then fit all on GPU and use one worker and don't pin the memory
             self.vol_loader = DataLoader(self.vol_data,
-                                         batch_size=self.configs.batch_size,
+                                         batch_size=1,
                                          shuffle=True,
                                          num_workers=0,
                                          pin_memory=False)
         else:
             self.vol_loader = DataLoader(self.vol_data,
-                                         batch_size=self.configs.batch_size,
+                                         batch_size=1,
                                          shuffle=True,
                                          num_workers=self.configs.num_workers,
                                          pin_memory=True)
@@ -283,37 +283,37 @@ class BaseTrainer:
                 if iteration > 0 and iteration % self.configs.compute_avg_loss_n_iterations == 0:
                     self.compute_average_loss()
 
-                    plt.semilogy(np.arange(0, iteration * self.n_volumes, self.configs.compute_avg_loss_n_iterations)[1:],
-                                 np.array(self.loss_avg_set), label='Average loss')
-                    plt.semilogy(np.arange(0, iteration * self.n_volumes, self.configs.compute_avg_loss_n_iterations)[1:],
-                                 np.array(self.equi_loss_avg_set), label='Equivariant loss')
-                    plt.semilogy(np.arange(0, iteration * self.n_volumes, self.configs.compute_avg_loss_n_iterations)[1:],
-                                 np.array(self.obs_loss_avg_set), label='Data-fidelity loss')
+                    iter_ = np.arange(0, iteration * self.n_volumes+1, self.configs.compute_avg_loss_n_iterations)[1:]
+                    iter_ = iter_[:len(self.loss_avg_set)]
+                    plt.semilogy(iter_, np.array(self.loss_avg_set), label='Average loss')
+                    plt.semilogy(iter_, np.array(self.equi_loss_avg_set), label='Equivariant loss')
+                    plt.semilogy(iter_, np.array(self.obs_loss_avg_set), label='Data-fidelity loss')
                     plt.savefig(os.path.join(self.save_path, 'losses.png'), dpi=300, bbox_inches='tight')
                     plt.close()
+                    print(iter_)
 
                     filename = os.path.join(self.save_path, 'losses.csv')
                     with open(filename, mode="w", newline="") as f:
                         writer = csv.writer(f)
                         writer.writerow(["Iterations", "Avg loss", "Equivariant loss", "Data-fidelity loss"])  # header
-                        for row in zip(np.arange(0, iteration * self.n_volumes, self.configs.compute_avg_loss_n_iterations)[1:], self.loss_avg_set, self.equi_loss_avg_set, self.obs_loss_avg_set):
+                        for row in zip(iter_, self.loss_avg_set, self.equi_loss_avg_set, self.obs_loss_avg_set):
                             writer.writerow(row)
 
                 if iteration > 0 and iteration % self.configs.save_n_iterations == 0:
                     self.save_model(iteration)
 
                 if iteration > 0 and self.configs.save_tomo_n_iterations > 0 and iteration % self.configs.save_tomo_n_iterations == 0:
-                    if configs is not None:
-                        vol_est_list = self.predict_dir(**configs.predict_params)
-                        for i in range(len(vol_est_list)):
-                            # Save the estimated volume
-                            name_1 = self.vol_paths_1[i].split('/')[-1].split('.mrc')[0]
-                            name_2 = self.vol_paths_2[i].split('/')[-1].split('.mrc')[0]
-                            vol_est_name = 'latest_prediction_' + name_1 +'_'+ name_2 + '.mrc'
-                            vol_save_path = os.path.join(self.save_path, vol_est_name)
-                            out = mrcfile.new(vol_save_path, overwrite=True)
-                            out.set_data(np.moveaxis(vol_est_list[i].astype(np.float32), 2, 0))
-                            out.close()
+                    print("Predict tomograms with current model.")
+                    vol_est_list = self.predict_dir(**configs.predict_params)
+                    for i in range(len(vol_est_list)):
+                        # Save the estimated volume
+                        name_1 = self.vol_paths_1[i].split('/')[-1].split('.mrc')[0]
+                        name_2 = self.vol_paths_2[i].split('/')[-1].split('.mrc')[0]
+                        vol_est_name = 'latest_prediction_' + name_1 +'_'+ name_2 + '.mrc'
+                        vol_save_path = os.path.join(self.save_path, vol_est_name)
+                        out = mrcfile.new(vol_save_path, overwrite=True)
+                        out.set_data(np.moveaxis(vol_est_list[i].astype(np.float32), 2, 0))
+                        out.close()
         print("####################")
         print("  Finished training the model.")
         print("####################")
