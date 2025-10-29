@@ -235,6 +235,8 @@ class BaseTrainer:
             print("Not using mixed precision training")
             scaler = None
             self.autocast = None
+        # So that the total number of iterations given to the model is the same whatever the number of volumes.
+        iterations = iterations // len(self.vol_loader)
         self.current_iteration = 0
         if hasattr(self.configs, 'compile'):
             if self.configs.compile:
