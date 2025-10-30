@@ -56,7 +56,7 @@ def cli_train(
         tomo1: Optional[List[str]] = typer.Option(None, help="Path to the second tomogram."),
         mask: Optional[Path] = typer.Option(None,
                                             help="(Optional) Path to the mask of the missing wedge in Fourier. By default, it is created from the tilt informations.)"),
-        angles: Optional[Path] = typer.Option(None,
+        angles: Optional[List[str]] = typer.Option(None,
                                               help="(Optional) Path to the tilt angle file. Valid extension include '.txt' and '.tlt'."),
         tilt_min: Optional[float] = typer.Option(None,
                                                  help="(Optional) Minimum tilt angle in degrees. Default is -60."),
@@ -90,7 +90,7 @@ def cli_train(
     if tomo0: cli_updates["data"]["tomo0"] = tomo0
     if tomo1: cli_updates["data"]["tomo1"] = tomo1
     if mask: cli_updates["data"]["mask"] = str(mask)
-    if angles: cli_updates["data"]["angles"] = [str(angles)]
+    if angles: cli_updates["data"]["angles"] = angles
     if tilt_min is not None: cli_updates["data"]["tilt_min"] = tilt_min
     if tilt_max is not None: cli_updates["data"]["tilt_max"] = tilt_max
     if save_dir: cli_updates["data"]["save_dir"] = str(save_dir)
@@ -143,14 +143,14 @@ def cli_predict(
         tomo1: Optional[List[str]] = typer.Option(None, help="Path to the second tomogram."),
         mask: Optional[Path] = typer.Option(None,
                                             help="(Optional) Path to the mask of the missing wedge in Fourier. By default, it is created from the tilt informations.)"),
-        angles: Optional[Path] = typer.Option(None,
+        angles: Optional[List[str]] = typer.Option(None,
                                               help="(Optional) Path to the tilt angle file. Valid extension include '.txt' and '.tlt'."),
         tilt_min: Optional[float] = typer.Option(None,
                                                  help="(Optional) Minimum tilt angle in degrees. Default is -60."),
         tilt_max: Optional[float] = typer.Option(None,
                                                  help="(Optional) Maximum tilt angle in degrees. Default is +60."),
         save_dir: Optional[Path] = typer.Option(None,
-                                                help="(Optional) Path to the directory to save the trained model. Default is 'runs/default/'."),
+                                                help="(Optional) Path to the directory where the trained model is saved. Default is 'runs/default/'."),
         save_dir_reconstructions: Optional[Path] = typer.Option(None,
                                                 help="(Optional) Path to the save the reconstructions. Defaults is same as save_dire."),
 
@@ -169,8 +169,8 @@ def cli_predict(
     if save_dir: cli_updates["data"]["save_dir"] = str(save_dir)
     if tomo0: cli_updates["data"]["tomo0"] = tomo0
     if tomo1: cli_updates["data"]["tomo1"] = tomo1
-    if mask: cli_updates["data"]["mask"] = str(mask)
-    if angles: cli_updates["data"]["angles"] = str(angles)
+    if mask: cli_updates["data"]["mask"] = mask
+    if angles: cli_updates["data"]["angles"] = angles
     if tilt_min is not None: cli_updates["data"]["tilt_min"] = tilt_min
     if tilt_max is not None: cli_updates["data"]["tilt_max"] = tilt_max
     if iter_load is not None: cli_updates["predict_params"]["iter_load"] = iter_load
@@ -187,7 +187,7 @@ def cli_predict(
 
     cfg = deep_update(cfg, cli_updates)
 
-    need = ["data.tomo0", "data.tomo1", "data.save_dir"]
+    need = ["data.tomo0", "data.save_dir"]
     if not cfg["data"].get("angles"):
         need += ["data.tilt_min", "data.tilt_max"]
     require(cfg, need)

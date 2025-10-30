@@ -43,6 +43,8 @@ def predict(config_yaml):
     configs = SimpleNamespace(**config_yaml)
     data_config = SimpleNamespace(**configs.data)
     predict_config = SimpleNamespace(**configs.predict_params)
+    # if data_config.tomo1 is None:
+    #     data_config.tomo1 = data_config.tomo0
     path_1 = data_config.tomo0
     path_2 = data_config.tomo1
     mask_path = data_config.mask
@@ -110,8 +112,12 @@ def predict(config_yaml):
     print("####################")
     for i in range(len(vol_est_list)):
         # Save the estimated volume
-        name = combine_names(path_1[i], path_2[i])
+        if path_2 is not None:
+            name = combine_names(path_1[i], path_2[i])
+        else:
+            name = combine_names(path_1[i], '')
         vol_save_path = os.path.join(save_dir_reconstructions, name)
+        print("Saving at ",vol_save_path)
         out = mrcfile.new(vol_save_path,overwrite=True)
         out.set_data(np.moveaxis(vol_est_list[i].astype(np.float32),2,0))
         out.close()

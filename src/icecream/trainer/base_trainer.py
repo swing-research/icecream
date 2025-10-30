@@ -142,7 +142,7 @@ class BaseTrainer:
 
         self.n_volumes = len(self.vol_paths_1)
 
-        if len(vol_paths_1) != len(vol_paths_2):
+        if len(vol_paths_1) != len(vol_paths_2) and len(vol_paths_2) != 0:
             raise ValueError("The number of volume paths for vol_paths_1 and vol_paths_2 must be the same.")
 
         # Load and store all the volume in a list on the CPU. Probably sub-optimal but enough at the moment.
@@ -151,17 +151,24 @@ class BaseTrainer:
         vol_mask_set = []
         for i in range(len(vol_paths_1)):
             vol_1_t = self.load_volume(vol_paths_1[i])
-            vol_2_t = self.load_volume(vol_paths_2[i])
-            print(f"Loaded volumes: \n {vol_paths_1[i]}\n and\n {vol_paths_2[i]}")
+            if len(vol_paths_2) != 0:
+                vol_2_t = self.load_volume(vol_paths_2[i])
+                print(f"Loaded volumes: \n {vol_paths_1[i]}\n and\n {vol_paths_2[i]}")
+                print(f"They have shape (x,y,z): {list(vol_1_t.shape)} and {list(vol_2_t.shape)}.")
+            else:
+                print(f"Loaded volume: \n {vol_paths_1[i]}")
+                print(f"It has shape (x,y,z): {list(vol_1_t.shape)}.")
 
-            print(f"They have shape (x,y,z): {list(vol_1_t.shape)} and {list(vol_2_t.shape)}.")
             if vol_mask_path is not None:
                 vol_mask = mrcfile.open(vol_mask_path[i]).data
                 vol_mask = np.moveaxis(vol_mask, 0, 2).astype(np.float32)
                 vol_mask_t = torch.tensor(vol_mask, dtype=torch.float32, device='cpu')
             else:
                 if use_mask:
-                    vol_avg = ((vol_1_t + vol_2_t) / 2).numpy()
+                    if len(vol_paths_2) != 0:
+                        vol_avg = ((vol_1_t + vol_2_t) / 2).numpy()
+                    else:
+                        vol_avg = ((vol_1_t) / 2).numpy()
                     vol_mask = make_mask(vol_avg, mask_boundary=None, side=mask_tomo_side, density_percentage=mask_tomo_density_perc, std_percentage=mask_tomo_std_perc)
                     vol_mask_t = torch.tensor(vol_mask, dtype=torch.float32, device='cpu')
                 else:
@@ -169,10 +176,12 @@ class BaseTrainer:
                     mask_frac = 0.0
             if self.load_device:
                 vol_1_set.append(vol_1_t.to(self.device))
-                vol_2_set.append(vol_2_t.to(self.device))
+                if len(vol_paths_2) != 0:
+                    vol_2_set.append(vol_2_t.to(self.device))
             else:
                 vol_1_set.append(vol_1_t.cpu())
-                vol_2_set.append(vol_2_t.cpu())
+                if len(vol_paths_2) != 0:
+                    vol_2_set.append(vol_2_t.cpu())
             if vol_mask_t is not None:
                 vol_mask_set.append(vol_mask_t.cpu())
 
@@ -480,19 +489,21 @@ class BaseTrainer:
                                      device=self.device,
                                      upsampled_=self.configs.upsample_volume,
                                      avg_pool=avg_pool)
-
-            vol_est_2, _ = inference(model=self.model,
-                                     vol_input=self.vol_data.volume_2_set[i],
-                                     size=crop_size,
-                                     stride=stride,
-                                     batch_size=batch_size,
-                                     window=self.window,
-                                     wedge=wedge_used,
-                                     pre_pad=pre_pad,
-                                     pre_pad_size=pre_pad_size,
-                                     device=self.device,
-                                     upsampled_=self.configs.upsample_volume,
-                                     avg_pool=avg_pool)
-            vol_est = (vol_est_1 + vol_est_2) / 2
-            vol_est_list.append(vol_est)
+            if len(self.vol_data.volume_2_set) != 0:
+                vol_est_2, _ = inference(model=self.model,
+                                         vol_input=self.vol_data.volume_2_set[i],
+                                         size=crop_size,
+                                         stride=stride,
+                                         batch_size=batch_size,
+                                         window=self.window,
+                                         wedge=wedge_used,
+                                         pre_pad=pre_pad,
+                                         pre_pad_size=pre_pad_size,
+                                         device=self.device,
+                                         upsampled_=self.configs.upsample_volume,
+                                         avg_pool=avg_pool)
+                vol_est = (vol_est_1 + vol_est_2) / 2
+                vol_est_list.append(vol_est)
+            else:
+                vol_est_list.append(vol_est_1)
         return vol_est_list
