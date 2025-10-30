@@ -110,7 +110,8 @@ def predict(config_yaml):
     print("####################")
     for i in range(len(vol_est_list)):
         # Save the estimated volume
-        vol_save_path = os.path.join(save_dir_reconstructions, f"volume_{i}.mrc")
+        name = combine_names(path_1[i], path_2[i])
+        vol_save_path = os.path.join(save_dir_reconstructions, name)
         out = mrcfile.new(vol_save_path,overwrite=True)
         out.set_data(np.moveaxis(vol_est_list[i].astype(np.float32),2,0))
         out.close()
