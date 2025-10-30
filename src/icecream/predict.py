@@ -112,7 +112,7 @@ def predict(config_yaml):
     print("####################")
     for i in range(len(vol_est_list)):
         # Save the estimated volume
-        if path_2 is not None:
+        if len(path_2) != 0:
             name = combine_names(path_1[i], path_2[i])
         else:
             name = combine_names(path_1[i], '')
