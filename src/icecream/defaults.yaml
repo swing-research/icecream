@@ -21,7 +21,7 @@ train_params:
   ref_wedge_support: 1 # Percentage of low frequency to keep in the reference, i.e. to remove from the missing wedge. 0 means that none are kept, 0.10 means that 10% of the lowest frequencies are kept has not part of the missing wedge.
   wedge_double_size: true # Defined the missing wedge on twice the size of a subtomogram is true.
   save_n_iterations: 5000 # Save the model weights every N iterations.
-  save_tomo_n_iterations: 0 # Run the tomogram reconstruction every N iterations. One reconstruction might take several minutes. Value of 0 means it doesn't run the prediction during training iterations.
+  save_tomo_n_iterations: 0 # Run the tomogram reconstruction every N iterations. One reconstruction might take several minutes and some GPU memory. Value of 0 means it doesn't run the prediction during training iterations.
   compute_avg_loss_n_iterations: 1000 # Average loss every N iterations.
   use_flips: true # Include flip operators in the equivariance loss if true.
   normalize_crops: false # Normalize each extracted sub-tomogram before going through the network is true.

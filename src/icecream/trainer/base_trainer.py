@@ -286,11 +286,14 @@ class BaseTrainer:
                 iter_ = np.arange(0, iteration * self.n_volumes+1, self.configs.compute_avg_loss_n_iterations)[1:]
                 iter_ = iter_[:len(self.loss_avg_set)]
                 plt.semilogy(iter_, np.array(self.loss_avg_set), label='Average loss')
-                plt.semilogy(iter_, np.array(self.equi_loss_avg_set), label='Equivariant loss')
-                plt.semilogy(iter_, np.array(self.obs_loss_avg_set), label='Data-fidelity loss')
-                plt.savefig(os.path.join(self.save_path, 'losses.png'), dpi=300, bbox_inches='tight')
+                plt.savefig(os.path.join(self.save_path, 'losse_avg.png'), dpi=300, bbox_inches='tight')
                 plt.close()
-                print(iter_)
+                plt.semilogy(iter_, np.array(self.equi_loss_avg_set), label='Equivariant loss')
+                plt.savefig(os.path.join(self.save_path, 'losse_equi.png'), dpi=300, bbox_inches='tight')
+                plt.close()
+                plt.semilogy(iter_, np.array(self.obs_loss_avg_set), label='Data-fidelity loss')
+                plt.savefig(os.path.join(self.save_path, 'losse_obs.png'), dpi=300, bbox_inches='tight')
+                plt.close()
 
                 filename = os.path.join(self.save_path, 'losses.csv')
                 with open(filename, mode="w", newline="") as f:

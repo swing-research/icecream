@@ -9,7 +9,7 @@ from .predict import predict
 from .utils.utils import split_tilt_series
 from torch.profiler import profile, record_function, ProfilerActivity
 
-app = typer.Typer(add_completion=False, help="Cryo-ET training & prediction CLI")
+app = typer.Typer(pretty_exceptions_show_locals=False, add_completion=False, help="Cryo-ET training & prediction CLI")
 
 
 # ---------- helpers ----------
