@@ -73,7 +73,7 @@ def predict(config_yaml):
     else:
         angle_min_set = [data_config.tilt_min]*len(path_1)
         angle_max_set = [data_config.tilt_max]*len(path_1)
-    assert (angle_min_set < angle_max_set).sum(), "angle_min should be less than angle_max"
+    assert (angle_min_set < angle_max_set), "angle_min should be less than angle_max"
 
     # Define the model
     model = get_model(**configs.model_params)
