@@ -35,7 +35,7 @@ train_params:
   min_distance: 0.5 # Minimum relative difference between rotated and unrotated missing wedge.
   window_type: "boxcar" # Shape of the crop.
   load_device: false # load all the full tomograms on the device. Will be faster but requires more memory.
-  num_workers: 0 # Hardcoded to 0 at the moment. 
+  num_workers: 0 # Hardcoded to 0 at the moment.
   pretrain_params:
     use_pretrain: false # Load a given model weigths if true.
     model_path: null # path to the model weights to load as pre-trained.

@@ -7,7 +7,6 @@ import sys
 import csv
 import json
 
-import ipdb
 import torch
 import mrcfile
 import numpy as np
