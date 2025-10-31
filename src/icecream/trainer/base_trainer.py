@@ -255,8 +255,8 @@ class BaseTrainer:
                 print("Compiling the model")
                 self.model = torch.compile(self.model, mode='max-autotune', fullgraph=True)
 
-        disable_bar = not sys.stderr.isatty()  # keep logs clean on non-TTY (e.g., SLURM)
-        pbar = tqdm(total=iterations, desc="Training", dynamic_ncols=True, disable=disable_bar)
+        # disable_bar = not sys.stderr.isatty()  # keep logs clean on non-TTY (e.g., SLURM)
+        pbar = tqdm(total=iterations, desc="Training", dynamic_ncols=True, disable=False)
         ema = None
         alpha = 0.1  # EMA smoothing for display
 
