@@ -203,9 +203,8 @@ class BaseTrainer:
                                     normalize_crops=self.configs.normalize_crops,
                                     device=self.device)
 
-        if self.n_volumes == 1:
-            # Faster to have a single worker if only a single volume
-            self.configs.num_workers = 0
+        # Hardcoded for now as we observe massive slowdown with other values
+        self.configs.num_workers = 0
 
         if self.load_device: # then fit all on GPU and use one worker and don't pin the memory
             self.vol_loader = DataLoader(self.vol_data,
