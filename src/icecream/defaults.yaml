@@ -2,7 +2,7 @@ data:
   tomo0: [] # path to the first set of tomograms, they should be in the same order as in tomo1.
   tomo1: [] # path to the second set of tomograms, they should be in the same order as in tomo1.
   save_dir: "runs/default/" # path where to save the results and training infos.
-  mask: null # Path to the mask of the missing wedge in Fourier. By default, it is created from the tilt information.
+  mask: null # Path to mask on the spatial domain, e.g. using slabify. By default, it is empty and a mask will be automatically created similarly to IsoNet.
   tilt_max: 60.0 # Minimum tilt angle in degrees. Default is -60.
   tilt_min: -60.0 # Maximum tilt angle in degrees. Default is +60.
   angles: null # Path to the tilt angle file. Valid extension include '.txt' and '.tlt'.

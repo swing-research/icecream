@@ -48,7 +48,7 @@ def cli_train(
     # data
     tomo0: Optional[List[str]] = typer.Option(None, help="Path to the first tomogram."),
     tomo1: Optional[List[str]] = typer.Option(None, help="Path to the second tomogram."),
-    mask:  Optional[Path]      = typer.Option(None, help="(Optional) Path to the mask of the missing wedge in Fourier. By default, it is created from the tilt informations.)"),
+    mask:  Optional[Path]      = typer.Option(None, help="(Optional) Path to mask on the spatial domain, e.g. using slabify. By default, it is empty and a mask will be automatically created similarly to IsoNet."),
     angles: Optional[Path]     = typer.Option(None, help="(Optional) Path to the tilt angle file. Valid extension include '.txt' and '.tlt'."),
     tilt_min: Optional[float]  = typer.Option(None, help="(Optional) Minimum tilt angle in degrees. Default is -60."),
     tilt_max: Optional[float]  = typer.Option(None, help="(Optional) Maximum tilt angle in degrees. Default is +60."),
