@@ -57,6 +57,7 @@ def train_model(config_yaml):
         angle_max_set = []
         angle_min_set = []
         if len(angles) == 1:
+            print("Using angle file: {}".format(angles[0]))
             angles_arr = np.loadtxt(angles[0], dtype=np.float32)
             angle_min = np.min(angles_arr)
             angle_max = np.max(angles_arr)
@@ -64,12 +65,14 @@ def train_model(config_yaml):
             angle_min_set = [angle_min] * len(path_1)
         else:
             for i in range(len(angles)):
+                print(f"Using angle file: {angles[i]}")
                 angles_arr = np.loadtxt(angles[i], dtype=np.float32)
                 angle_min = np.min(angles_arr)
                 angle_max = np.max(angles_arr)
                 angle_max_set.append(angle_max)
                 angle_min_set.append(angle_min)
     else:
+        print(f"Using angle value in [{data_config.tilt_min},{data_config.tilt_max}]")
         angle_min_set = [data_config.tilt_min]*len(path_1)
         angle_max_set = [data_config.tilt_max]*len(path_1)
     assert (angle_min_set < angle_max_set), "angle_min should be less than angle_max"

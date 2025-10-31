@@ -6,6 +6,8 @@ import os
 import sys
 import csv
 import json
+
+import ipdb
 import torch
 import mrcfile
 import numpy as np
@@ -160,6 +162,7 @@ class BaseTrainer:
                 print(f"It has shape (x,y,z): {list(vol_1_t.shape)}.")
 
             if vol_mask_path is not None:
+                print(f"Loading tomogram mask: \n {vol_mask_path[i]}")
                 vol_mask = mrcfile.open(vol_mask_path[i]).data
                 vol_mask = np.moveaxis(vol_mask, 0, 2).astype(np.float32)
                 vol_mask_t = torch.tensor(vol_mask, dtype=torch.float32, device='cpu')

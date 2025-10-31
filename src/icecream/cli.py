@@ -54,8 +54,8 @@ def cli_train(
         # data
         tomo0: Optional[List[str]] = typer.Option(None, help="Path to the first tomogram."),
         tomo1: Optional[List[str]] = typer.Option(None, help="Path to the second tomogram."),
-        mask: Optional[Path] = typer.Option(None,
-                                            help="(Optional) Path to the mask of the missing wedge in Fourier. By default, it is created from the tilt informations.)"),
+        mask: Optional[List[str]] = typer.Option(None,
+                                            help="(Optional) Path to the mask in the tomogram domain to keep ROI. By default, it is created similarly to IsoNet.)"),
         angles: Optional[List[str]] = typer.Option(None,
                                               help="(Optional) Path to the tilt angle file. Valid extension include '.txt' and '.tlt'."),
         tilt_min: Optional[float] = typer.Option(None,
@@ -89,7 +89,7 @@ def cli_train(
     cli_updates: Dict[str, Any] = {"data": {}, "train_params": {}}
     if tomo0: cli_updates["data"]["tomo0"] = tomo0
     if tomo1: cli_updates["data"]["tomo1"] = tomo1
-    if mask: cli_updates["data"]["mask"] = str(mask)
+    if mask: cli_updates["data"]["mask"] = mask
     if angles: cli_updates["data"]["angles"] = angles
     if tilt_min is not None: cli_updates["data"]["tilt_min"] = tilt_min
     if tilt_max is not None: cli_updates["data"]["tilt_max"] = tilt_max
@@ -141,8 +141,6 @@ def cli_predict(
         # data
         tomo0: Optional[List[str]] = typer.Option(None, help="Path to the first tomogram."),
         tomo1: Optional[List[str]] = typer.Option(None, help="Path to the second tomogram."),
-        mask: Optional[Path] = typer.Option(None,
-                                            help="(Optional) Path to the mask of the missing wedge in Fourier. By default, it is created from the tilt informations.)"),
         angles: Optional[List[str]] = typer.Option(None,
                                               help="(Optional) Path to the tilt angle file. Valid extension include '.txt' and '.tlt'."),
         tilt_min: Optional[float] = typer.Option(None,
@@ -169,7 +167,6 @@ def cli_predict(
     if save_dir: cli_updates["data"]["save_dir"] = str(save_dir)
     if tomo0: cli_updates["data"]["tomo0"] = tomo0
     if tomo1: cli_updates["data"]["tomo1"] = tomo1
-    if mask: cli_updates["data"]["mask"] = mask
     if angles: cli_updates["data"]["angles"] = angles
     if tilt_min is not None: cli_updates["data"]["tilt_min"] = tilt_min
     if tilt_max is not None: cli_updates["data"]["tilt_max"] = tilt_max
