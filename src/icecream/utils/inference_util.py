@@ -229,6 +229,7 @@ def inference(vol_input, model, size, stride, batch_size,
                 mask[i:i+size,j:j+size,k:k+size] += window
                 count += 1
 
+    mask[mask==0] = 1
     vol_est = vol_est / mask
 
 
