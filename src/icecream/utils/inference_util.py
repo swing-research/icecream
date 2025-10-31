@@ -157,7 +157,7 @@ def inference(vol_input, model, size, stride, batch_size,
                 vol_est[i:i+size,j:j+size,k:k+size] += output_crops[count].to(device)*window
                 mask[i:i+size,j:j+size,k:k+size] += window
                 count += 1
-
+    mask[mask==0] = 1
     vol_est = vol_est / mask
     vol_est = vol_est[:N1_pad,:N2_pad,:N3_pad]
     vol_est_np = vol_est.cpu().numpy()
