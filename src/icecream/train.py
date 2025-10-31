@@ -44,6 +44,8 @@ def train_model(config_yaml):
     path_1 = data_config.tomo0
     path_2 = data_config.tomo1
     mask_path = data_config.mask
+    if mask_path == []:
+        mask_path = None
 
     # # Throw not implemented error if path_1 or path_2 has more than one volume
     # if isinstance(path_1, list) and len(path_1) > 1:
@@ -53,6 +55,8 @@ def train_model(config_yaml):
 
     # if configs.data has an attribute called 'angles', use it, otherwise set to None
     angles = getattr(data_config, 'angles', None)
+    if angles == []:
+        angles = None
     if angles is not None:
         angle_max_set = []
         angle_min_set = []
