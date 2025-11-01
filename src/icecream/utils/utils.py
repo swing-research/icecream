@@ -969,7 +969,9 @@ def split_tilt_series(path_mrc, path_angle=None, tilt_min=None, tilt_max=None, s
         print(f"Created directory: {save_dir}")
     else:
         print(f"Directory already exists: {save_dir}")
-    name_ts = path_mrc[1+path_mrc.rfind(os.path.sep):path_mrc.rfind('.')]
+    dir_path = os.path.dirname(path_mrc)
+    name_ts = os.path.basename(path_mrc)[:path_mrc.rfind('.')]
+    ext = path_mrc[path_mrc.rfind('.'):]
 
     # Split the tilt-series
     ts = np.float32(mrcfile.open(path_mrc, permissive=True).data)
@@ -990,9 +992,9 @@ def split_tilt_series(path_mrc, path_angle=None, tilt_min=None, tilt_max=None, s
             ts = ts[1:]
         ts1 = ts[:,:,::2]
         ts2 = ts[:,:,1::2]
-    out = mrcfile.new(os.path.join(save_dir, name_ts + "_split1"+path_mrc[path_mrc.rfind('.'):]), ts1.astype(np.float32), overwrite=True)
+    out = mrcfile.new(os.path.join(save_dir, name_ts + "_split1"+ext), ts1.astype(np.float32), overwrite=True)
     out.close()
-    out = mrcfile.new(os.path.join(save_dir, name_ts + "_split2"+path_mrc[path_mrc.rfind('.'):]), ts2.astype(np.float32), overwrite=True)
+    out = mrcfile.new(os.path.join(save_dir, name_ts + "_split2"+ext), ts2.astype(np.float32), overwrite=True)
     out.close()
     print("Tilt-series has been split.")
 
