@@ -1003,11 +1003,10 @@ def split_tilt_series(path_mrc, path_angle=None, tilt_min=None, tilt_max=None, s
     if path_angle is not None:
         if os.path.isfile(path_angle):
             angles = np.loadtxt(path_angle)
-            name_angle = path_angle[1+path_angle.rfind(os.path.sep):path_angle.rfind('.')]
+            name_angle = os.path.basename(path_angle)[:path_angle.rfind('.')]
+            ext = path_angle[path_angle.rfind('.'):]
     elif tilt_min is not None and tilt_max is not None:
         angles = np.linspace(tilt_min, tilt_max, ts.shape[0])
-    else:
-        angles = None
     if angles is not None:
         if angles.shape[0]%2 == 1:
             angles = angles[1:]
