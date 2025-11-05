@@ -14,6 +14,7 @@ Date 05.11.2025
 - Predict command allows a single tomogram as input
 - Remove the mask argument from the predict command as it is only used for training.
 - num_workers parameters is enforced to be 0 as we observed massive slow down with larger values.
+
 Date: 30.10.2025
 - Allow multiple volumes to be used for training and testing. Specific features:
    - Scale the total number of iterations to be independent of the number of volume.
