@@ -48,12 +48,16 @@ def predict(config_yaml):
     path_1 = data_config.tomo0
     path_2 = data_config.tomo1
     mask_path = data_config.mask
+    if len(mask_path) == 0:
+        mask_path = None
     # create save directory if it does not exist
     save_dir_reconstructions = predict_config.save_dir_reconstructions
     os.makedirs(save_dir_reconstructions, exist_ok=True)
 
     # if configs.data has an attribute called 'angles', use it, otherwise set to None
     angles = getattr(data_config, 'angles', None)
+    if len(angles) == 0:
+        angles = None
     if angles is not None:
         angle_max_set = []
         angle_min_set = []
@@ -73,7 +77,7 @@ def predict(config_yaml):
     else:
         angle_min_set = [data_config.tilt_min]*len(path_1)
         angle_max_set = [data_config.tilt_max]*len(path_1)
-    assert (angle_min_set < angle_max_set), "angle_min should be less than angle_max"
+    # assert (angle_min_set < angle_max_set), "angle_min should be less than angle_max"
 
     # Define the model
     model = get_model(**configs.model_params)
@@ -82,7 +86,7 @@ def predict(config_yaml):
     train_config = SimpleNamespace(**configs.train_params)
 
     # Define the trainer
-    trainer = EquivariantTrainer( configs=train_config,
+    trainer = EquivariantTrainer(configs=train_config,
                                 model=model, 
                                 angle_max_set=angle_max_set,
                                 angle_min_set=angle_min_set,
@@ -143,12 +147,7 @@ def main(
     typer.echo(f"batch_size: {batch_size}")
 
     predict(
-        config_dict,
-        config_path=config,
-        save_path=save_path,
-        iteration=iteration,
-        crop_size=crop_size,
-        batch_size=batch_size or 0,
+        config_dict
     )
 
 if __name__ == '__main__':

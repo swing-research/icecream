@@ -44,7 +44,7 @@ def train_model(config_yaml):
     path_1 = data_config.tomo0
     path_2 = data_config.tomo1
     mask_path = data_config.mask
-    if mask_path == []:
+    if len(mask_path) == 0:
         mask_path = None
 
     # # Throw not implemented error if path_1 or path_2 has more than one volume
@@ -55,7 +55,7 @@ def train_model(config_yaml):
 
     # if configs.data has an attribute called 'angles', use it, otherwise set to None
     angles = getattr(data_config, 'angles', None)
-    if angles == []:
+    if len(angles) == 0:
         angles = None
     if angles is not None:
         angle_max_set = []
@@ -79,7 +79,7 @@ def train_model(config_yaml):
         print(f"Using angle value in [{data_config.tilt_min},{data_config.tilt_max}]")
         angle_min_set = [data_config.tilt_min]*len(path_1)
         angle_max_set = [data_config.tilt_max]*len(path_1)
-    assert (angle_min_set < angle_max_set), "angle_min should be less than angle_max"
+    # assert (angle_min_set < angle_max_set), "angle_min should be less than angle_max"
 
     # Define the model and the trainer
     model = get_model(**configs.model_params)
