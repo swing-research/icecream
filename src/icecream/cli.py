@@ -86,7 +86,7 @@ def cli_train(
     if config:
         cfg = deep_update(cfg, load_yaml(config))
 
-    cli_updates: Dict[str, Any] = {"data": {}, "train_params": {}}
+    cli_updates: Dict[str, Any] = {"data": {}, "train_params": {}, "predict_params": {} }
     if tomo0: cli_updates["data"]["tomo0"] = tomo0
     if tomo1: cli_updates["data"]["tomo1"] = tomo1
     if mask: cli_updates["data"]["mask"] = mask
@@ -96,7 +96,9 @@ def cli_train(
     if save_dir: cli_updates["data"]["save_dir"] = str(save_dir)
 
     if batch_size is not None: cli_updates["train_params"]["batch_size"] = batch_size
-    if crop_size is not None: cli_updates["train_params"]["crop_size"] = crop_size
+    if crop_size is not None:
+        cli_updates["train_params"]["crop_size"] = crop_size
+        cli_updates["predict_params"]["stride"] = crop_size//2
     if iterations is not None: cli_updates["train_params"]["iterations"] = iterations
     if save_n_iterations is not None: cli_updates["train_params"]["save_n_iterations"] = save_n_iterations
     if eq_weight is not None: cli_updates["train_params"]["eq_weight"] = eq_weight
@@ -163,7 +165,7 @@ def cli_predict(
     if config:
         cfg = deep_update(cfg, load_yaml(config))
 
-    cli_updates: Dict[str, Any] = {"data": {}, "predict_params": {}}
+    cli_updates: Dict[str, Any] = {"data": {}, "predict_params": {}, "train_params": {}}
     if save_dir: cli_updates["data"]["save_dir"] = str(save_dir)
     if tomo0: cli_updates["data"]["tomo0"] = tomo0
     if tomo1: cli_updates["data"]["tomo1"] = tomo1
@@ -176,7 +178,8 @@ def cli_predict(
     if batch_size is not None:
         cli_updates["predict_params"]["batch_size"] = batch_size
     if crop_size is not None:
-        cli_updates["predict_params"]["crop_size"] = crop_size
+        cli_updates["train_params"]["crop_size"] = crop_size
+        cli_updates["predict_params"]["stride"] = crop_size//2
 
     cfg = deep_update(cfg, cli_updates)
 

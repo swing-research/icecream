@@ -9,23 +9,23 @@ Icecream provides a theoretically grounded and computationally efficient method 
 ### 🧊 Note
 The codebase is under active development. 
 
+⚠️ Important: PyTorch 2.9 currently has a bug affecting half-precision (FP16) training. Please use PyTorch 2.8 or earlier for now. See this issue.
+
 #### Updates 
 Date 05.11.2025
-- Predict command allows a single tomogram as input
+- **Allow multiple volumes to be used for training and testing**. Specific features:
+   - Scale the total number of iterations to be independent of the number of volume.
+   - Using the command line, the option name should be repeated (icecream train --tomo1 path1/fbp1.mrc --tomo1 path2/fbp1.mrc ...).
+- Predict command allows a single tomogram as input.
 - Remove the mask argument from the predict command as it is only used for training.
 - num_workers parameters is enforced to be 0 as we observed massive slow down with larger values.
-
-Date: 30.10.2025
-- Allow multiple volumes to be used for training and testing. Specific features:
-   - Scale the total number of iterations to be independent of the number of volume.
-   - Using the command line, the option name should be repeated (icecream train --tomo1 path1/fbp1.mrc --tomo1 path2/fbp1.mrc ...)
 - Save csv and png plot of the loss over iterates. You will need to install matplotlib. You can run 'pip install -e .'
 - Parameters updates:
 	- Added train_params.load_device to allow the tomograms and masks to be loaded on the GPU directly if space allows it.
 	-  Added iter_load in predict_params to choose which model to load.
 	- Added parameter save_dir_reconstructions in predict_params to save reconstructions elsewhere.
 	- Included pretrain_params into train_params.
-	- Changed scale to eq_weight to be more explicit.
+	- **Changed scale to eq_weight to be more explicit**.
 	- Added parameters mask_tomo_side, mask_tomo_density_perc and mask_tomo_std_perc file to generate the mask in space domain of the tomogram.
 
 Date: 23.10.2025
@@ -37,7 +37,6 @@ Date: 23.10.2025
 - Added an option for torch.compile.
 
 The current version supports training on a single split of the tomograms.  
-Upcoming updates will include support for **multi-volume training**.
 
 ## Installation
 

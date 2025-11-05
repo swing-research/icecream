@@ -482,6 +482,8 @@ class BaseTrainer:
             self.window_type = self.configs.window_type
         else:
             self.window_type = None
+        if stride < crop_size//2:
+            stride = crop_size//2
 
         vol_est_list = []
         for i in range(len(self.vol_data.volume_1_set)):
