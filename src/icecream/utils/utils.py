@@ -171,8 +171,8 @@ def generate_all_cube_symmetries_torch(cube, wedge, use_flips=False, min_distanc
     Generates all 48 symmetries of a 3D cube (NxNxN NumPy array), including reflections.
 
     Parameters:
-        cube (numpy.ndarray): A 3D NumPy array of shape (N, N, N).
-        wedge (numpy.ndarray): A 3D NumPy array of shape (N, N, N) with
+        cube (torch.tensor): A 3D NumPy array of shape (N, N, N).
+        wedge (torch.tensor): A 3D NumPy array of shape (N, N, N) with
             1s where the wedge is and 0s elsewhere.
 
     Returns:
@@ -267,8 +267,9 @@ def crop_volumes_mask(volume1, volume_2, mask, mask_frac, cropsize, n_crops):
         if torch.mean(crop_mask) < mask_frac:
             # print('Mask fraction: ',torch.mean(crop_mask))
             continue
-        crops_1.append(volume1[start1:start1 + cropsize, start2:start2 + cropsize, start3:start3 + cropsize])
-        crops_2.append(volume_2[start1:start1 + cropsize, start2:start2 + cropsize, start3:start3 + cropsize])
+
+        crops_1.append(volume1[start1:start1 + cropsize, start2:start2 + cropsize, start3:start3 + cropsize].clone())
+        crops_2.append(volume_2[start1:start1 + cropsize, start2:start2 + cropsize, start3:start3 + cropsize].clone())
         count = count + 1
     return crops_1, crops_2
 
@@ -952,7 +953,7 @@ def combine_names(vol_1, vol_2):
         combined_name = name_2 + '_' + name_1
 
     # add ei as the suffix
-    combined_name = combined_name + '_ei'
+    combined_name = combined_name + '_icecream'
 
     return combined_name + '.mrc'
 
@@ -963,36 +964,52 @@ def split_tilt_series(path_mrc, path_angle=None, tilt_min=None, tilt_max=None, s
     """
     if save_dir is None:
         save_dir = path_mrc[:path_mrc.rfind(os.path.sep)]
-        name_ts = path_mrc[1+path_mrc.rfind(os.path.sep):path_mrc.rfind('.')]
+    if not os.path.exists(save_dir):
+        os.makedirs(save_dir)
+        print(f"Created directory: {save_dir}")
+    else:
+        print(f"Directory already exists: {save_dir}")
+    dir_path = os.path.dirname(path_mrc)
+    name_ts = os.path.basename(path_mrc)[:path_mrc.rfind('.')]
+    ext = path_mrc[path_mrc.rfind('.'):]
 
     # Split the tilt-series
     ts = np.float32(mrcfile.open(path_mrc, permissive=True).data)
     # Assume that the smallest dimension corresponds to the tilts
     indx_tilt = np.argmin(ts.shape)
     if indx_tilt == 0:
+        if ts.shape[0]%2 == 1:
+            ts = ts[1:]
         ts1 = ts[::2]
         ts2 = ts[1::2]
     elif indx_tilt == 1:
+        if ts.shape[1]%2 == 1:
+            ts = ts[1:]
         ts1 = ts[:,::2]
         ts2 = ts[:,1::2]
     elif indx_tilt == 2:
+        if ts.shape[2]%2 == 1:
+            ts = ts[1:]
         ts1 = ts[:,:,::2]
         ts2 = ts[:,:,1::2]
-    out = mrcfile.new(os.path.join(save_dir, name_ts + "_split1"+path_mrc[path_mrc.rfind('.'):]), ts1.astype(np.float32), overwrite=True)
+    out = mrcfile.new(os.path.join(save_dir, name_ts + "_split1"+ext), ts1.astype(np.float32), overwrite=True)
     out.close()
-    out = mrcfile.new(os.path.join(save_dir, name_ts + "_split2"+path_mrc[path_mrc.rfind('.'):]), ts2.astype(np.float32), overwrite=True)
+    out = mrcfile.new(os.path.join(save_dir, name_ts + "_split2"+ext), ts2.astype(np.float32), overwrite=True)
     out.close()
+    print("Tilt-series has been split.")
 
     # Split the angles if needed
+    angles = None
     if path_angle is not None:
         if os.path.isfile(path_angle):
             angles = np.loadtxt(path_angle)
-            name_angle = path_angle[1+path_angle.rfind(os.path.sep):path_angle.rfind('.')]
+            name_angle = os.path.basename(path_angle)[:path_angle.rfind('.')]
+            ext = path_angle[path_angle.rfind('.'):]
     elif tilt_min is not None and tilt_max is not None:
         angles = np.linspace(tilt_min, tilt_max, ts.shape[0])
-    else:
-        angles = None
     if angles is not None:
+        if angles.shape[0]%2 == 1:
+            angles = angles[1:]
         angles1 = angles[::2]
         angles2 = angles[1::2]
         if os.path.isfile(path_angle):
@@ -1005,4 +1022,5 @@ def split_tilt_series(path_mrc, path_angle=None, tilt_min=None, tilt_max=None, s
         else:
             np.savetxt(os.path.join(save_dir, name_ts + "_angles1.tlt"), angles1, fmt="%.6f")
             np.savetxt(os.path.join(save_dir, name_ts + "_angles2.tlt"), angles2, fmt="%.6f")
+        print("Split angle file has been saved.")
 

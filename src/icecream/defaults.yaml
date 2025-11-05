@@ -2,16 +2,16 @@ data:
   tomo0: [] # path to the first set of tomograms, they should be in the same order as in tomo1.
   tomo1: [] # path to the second set of tomograms, they should be in the same order as in tomo1.
   save_dir: "runs/default/" # path where to save the results and training infos.
-  mask: null # Path to mask on the spatial domain, e.g. using slabify. By default, it is empty and a mask will be automatically created similarly to IsoNet.
-  tilt_max: 60.0 # Minimum tilt angle in degrees. Default is -60.
-  tilt_min: -60.0 # Maximum tilt angle in degrees. Default is +60.
-  angles: null # Path to the tilt angle file. Valid extension include '.txt' and '.tlt'.
+  mask: [] # Path to tomogram masks on the spatial domain, e.g. using Slabify. If empty, masks will be created similarly to IsoNet.
+  angles: [] # Path to the tilt angle files. Valid extensions include '.txt' and '.tlt'.
+  tilt_max: 60.0 # Minimum tilt angle in degrees. Default is -60. Only used if angles is not provided.
+  tilt_min: -60.0 # Maximum tilt angle in degrees. Default is +60. Only used if angles is not provided.
 
 train_params:
   device: 0 # GPU number or device name. Only a single GPU is supported at the moment.
   crop_size: 72 # Size of the sub-tomograms extracted to train. Only cubic sub-tomograms are allowed.
   iterations: 50000 # Total number of training iterations.
-  scale: 2.0 # Scaling factor. Increase to get more regularization.
+  eq_weight: 2.0 # Equivariant regularization weight. Increase to get more regularization.
   batch_size: 8 # Training batch size. Reduce if memory issue.
   seed: 42 # Seed number for reproducibility.
   compile: false # Use toch.compile to speed up training at the cost of compilation time. Still under validation.
@@ -21,11 +21,11 @@ train_params:
   ref_wedge_support: 1 # Percentage of low frequency to keep in the reference, i.e. to remove from the missing wedge. 0 means that none are kept, 0.10 means that 10% of the lowest frequencies are kept has not part of the missing wedge.
   wedge_double_size: true # Defined the missing wedge on twice the size of a subtomogram is true.
   save_n_iterations: 5000 # Save the model weights every N iterations.
-  save_tomo_n_iterations: 0 # Run the tomogram reconstruction every N iterations. One reconstruction might take several minutes. Value of 0 means it doesn't run the prediction during training iterations.
+  save_tomo_n_iterations: 0 # Run the tomogram reconstruction every N iterations. One reconstruction might take several minutes and some GPU memory. Value of 0 means it doesn't run the prediction during training iterations.
   compute_avg_loss_n_iterations: 1000 # Average loss every N iterations.
   use_flips: true # Include flip operators in the equivariance loss if true.
   normalize_crops: false # Normalize each extracted sub-tomogram before going through the network is true.
-  use_inp_wedge: false # Use reconstructed wedge in the equivariance loss if true. The paper describe the case where it is false.
+  use_inp_wedge: false # Use reconstructed wedge in the equivariance loss if false. The paper describe the case where it is false.
   learning_rate: 1e-4 # Learning rate for training the network. Reduce it if training is chaotic.
   use_mixed_precision: true # Use mixed precision tensor if true. This allows the training to be roughly twice faster at the cost of worse numerical precision. Usually setting it to true leads to still accurate results.
   no_window: false # If true, use the full tomogram to train the model. If false, only the central part of the volume is used for training.
@@ -34,13 +34,20 @@ train_params:
   eq_use_direct: false # If false, the rotated wedge is maksed from the loss computation.
   min_distance: 0.5 # Minimum relative difference between rotated and unrotated missing wedge.
   window_type: "boxcar" # Shape of the crop.
+  load_device: false # load all the full tomograms on the device. Will be faster but requires more memory.
+  num_workers: 0 # Hardcoded to 0 at the moment.
+  pretrain_params:
+    use_pretrain: false # Load a given model weigths if true.
+    model_path: null # path to the model weights to load as pre-trained.
 
 predict_params:
+  save_dir_reconstructions: null # where to save the reconstructions. Default is same as data.save_dir.
   batch_size: 5 # Inference batch size. Reduce if memory issue.
   stride: 36 # Number of pixel between two reconstructed subtomograms. Overlap is handled by averaging.
   pre_pad: true # Pad the original subtomograms with 0.
   pre_pad_size: null # Size of padding to apply to the full tomogram.
   avg_pool: false  # Use average pooling to smooth the input tomogram to process.
+  iter_load: -1 # iteration of the model to load, -1 is the latest.
 
 model_params:
   name: "unet3d_bf" # Name of the model. Only "unet3d_bf" is supported at the moment.
@@ -55,7 +62,10 @@ model_params:
 mask_params:
   use_mask: true # Apply a lamella mask to the tomogram. If a mask file is not provided, it will be generated similarly to IsoNet using the parameters below.
   mask_frac: 0.5 # Threshold value to
+  mask_tomo_side : 5
+  mask_tomo_density_perc : 50
+  mask_tomo_std_perc : 50
 
-pretrain_params:
-  use_pretrain: false # Load a given model weigths if true.
-  model_path: None # path to the model weights to load as pre-trained.
+debug:
+  verbose: false # Save several outputs regarding data pre-processing, training and inference. Will result in a lot of file saved.
+  profiling: false # Profile the code.
