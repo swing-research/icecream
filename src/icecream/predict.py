@@ -32,10 +32,9 @@ def get_latest_iteration(model_path):
 
     # Extract iteration numbers and find the maximum
     iterations = [int(f.split('_')[-1].split('.')[0]) for f in iteration_files]
-
     return max(iterations)
 
-def predict(config_yaml, config_path, iteration=-1, crop_size=None, batch_size=0, save_path=None):
+def predict(config_yaml):
     """
     Run the prediction using a trained model and save it.
     """
@@ -43,30 +42,42 @@ def predict(config_yaml, config_path, iteration=-1, crop_size=None, batch_size=0
     # Get params
     configs = SimpleNamespace(**config_yaml)
     data_config = SimpleNamespace(**configs.data)
+    predict_config = SimpleNamespace(**configs.predict_params)
+    # if data_config.tomo1 is None:
+    #     data_config.tomo1 = data_config.tomo0
     path_1 = data_config.tomo0
     path_2 = data_config.tomo1
     mask_path = data_config.mask
-    # if explicit save path is not given, save in the folder containing the config file
-    save_path = config_path.parent if save_path is None else save_path
+    if len(mask_path) == 0:
+        mask_path = None
     # create save directory if it does not exist
-    os.makedirs(save_path, exist_ok=True)
-
-    # Throw not implemented error if path_1 or path_2 has more than one volume
-    if isinstance(path_1, list) and len(path_1) > 1:
-        raise NotImplementedError("Multiple volumes not supported yet.")
-    if isinstance(path_2, list) and len(path_2) > 1:
-        raise NotImplementedError("Multiple volumes not supported yet.")
+    save_dir_reconstructions = predict_config.save_dir_reconstructions
+    os.makedirs(save_dir_reconstructions, exist_ok=True)
 
     # if configs.data has an attribute called 'angles', use it, otherwise set to None
     angles = getattr(data_config, 'angles', None)
+    if len(angles) == 0:
+        angles = None
     if angles is not None:
-        angles_arr = np.loadtxt(angles, dtype=np.float32)
-        angle_min = np.min(angles_arr)
-        angle_max = np.max(angles_arr)
+        angle_max_set = []
+        angle_min_set = []
+        if len(angles) == 1:
+            angles_arr = np.loadtxt(angles[0], dtype=np.float32)
+            angle_min = np.min(angles_arr)
+            angle_max = np.max(angles_arr)
+            angle_max_set = [angle_max]*len(path_1)
+            angle_min_set = [angle_min] * len(path_1)
+        else:
+            for i in range(len(angles)):
+                angles_arr = np.loadtxt(angles[i], dtype=np.float32)
+                angle_min = np.min(angles_arr)
+                angle_max = np.max(angles_arr)
+                angle_max_set.append(angle_max)
+                angle_min_set.append(angle_min)
     else:
-        angle_min = data_config.tilt_min
-        angle_max = data_config.tilt_max
-    assert angle_min < angle_max, "angle_min should be less than angle_max"
+        angle_min_set = [data_config.tilt_min]*len(path_1)
+        angle_max_set = [data_config.tilt_max]*len(path_1)
+    # assert (angle_min_set < angle_max_set), "angle_min should be less than angle_max"
 
     # Define the model
     model = get_model(**configs.model_params)
@@ -75,49 +86,45 @@ def predict(config_yaml, config_path, iteration=-1, crop_size=None, batch_size=0
     train_config = SimpleNamespace(**configs.train_params)
 
     # Define the trainer
-    trainer = EquivariantTrainer( configs=train_config,
+    trainer = EquivariantTrainer(configs=train_config,
                                 model=model, 
-                                angle_max=angle_max,
-                                angle_min=angle_min,
-                                angles=None,  # Set to specific angles if needed
-                                save_path=save_path
+                                angle_max_set=angle_max_set,
+                                angle_min_set=angle_min_set,
+                                angles_set=None,  # Set to specific angles if needed
+                                save_path=save_dir_reconstructions
                                 )
-    
-    # Get name to load right weights
-    model_path = os.path.join(save_path,'model')
-    save_name = combine_names(path_1[0],path_2[0]).split('.mrc')[0]
-    vol_est_name = save_name
-    if iteration != -1:
-        vol_est_name += f'_iteration_{iteration}'
-    if batch_size !=0:
-        print(f"Using batch size: {batch_size}")
-        configs.predict_params['batch_size'] = batch_size
-        vol_est_name += f'_bs_{batch_size}'
-    if crop_size is not None:
-        print(f"Using crop size: {crop_size}")
-        configs.predict_params['crop_size'] = crop_size
-        vol_est_name += f'_crop_{crop_size}'
-    vol_est_name += '.mrc'
-    if iteration == -1:
-        iteration = get_latest_iteration(model_path)
-    if iteration == -1:
-        raise ValueError(f"No saved model found in {model_path}")
 
-    # Load the model weights
-    model_path = os.path.join(model_path, f'model_iteration_{iteration}.pt')
+    model_save_path = os.path.join(data_config.save_dir, 'model')
+    iteration = predict_config.iter_load
+    if iteration == -1:
+        iteration = get_latest_iteration(model_save_path)
+    if iteration == -1:
+        raise ValueError(f"No saved model found in {model_save_path}")
+    model_path = os.path.join(model_save_path, f'model_iteration_{iteration}.pt')
     trainer.load_model(model_path)
     trainer.load_data(vol_paths_1=path_1,
-                    vol_paths_2=path_2, 
+                    vol_paths_2=path_2,
                     vol_mask_path=mask_path)
 
-    # Evaluate the model
-    vol_est = trainer.predict_dir(**configs.predict_params)
-
-    # Save the estimated volume
-    vol_save_path = os.path.join(save_path, vol_est_name)
-    out = mrcfile.new(vol_save_path,overwrite=True)
-    out.set_data(np.moveaxis(vol_est.astype(np.float32),2,0))
-    out.close()
+    # Reconstruct each volume in the list
+    print("####################")
+    print("  Started inference.")
+    print("####################")
+    vol_est_list = trainer.predict_dir(**configs.predict_params)
+    print("####################")
+    print("  Finished inference.")
+    print("####################")
+    for i in range(len(vol_est_list)):
+        # Save the estimated volume
+        if len(path_2) != 0:
+            name = combine_names(path_1[i], path_2[i])
+        else:
+            name = combine_names(path_1[i], '')
+        vol_save_path = os.path.join(save_dir_reconstructions, name)
+        print("Saving at ",vol_save_path)
+        out = mrcfile.new(vol_save_path,overwrite=True)
+        out.set_data(np.moveaxis(vol_est_list[i].astype(np.float32),2,0))
+        out.close()
 
 def main(
     config: Optional[Path] = typer.Option(None, "--config", "-c", help="Path to YAML config file"),
@@ -140,12 +147,7 @@ def main(
     typer.echo(f"batch_size: {batch_size}")
 
     predict(
-        config_dict,
-        config_path=config,
-        save_path=save_path,
-        iteration=iteration,
-        crop_size=crop_size,
-        batch_size=batch_size or 0,
+        config_dict
     )
 
 if __name__ == '__main__':

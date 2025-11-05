@@ -1,6 +1,6 @@
 [project]
 name = "icecream"
-version = "0.1.0"
+version = "0.3.0"
 requires-python = ">=3.11"
 description = "Cryo-ET training & prediction CLI"
 readme = "README.md"
@@ -14,7 +14,8 @@ dependencies = [
   "PyYAML>=6",
   "tqdm>=4.66",
   "typer>=0.12",  
-  "h5py>=3.10",       
+  "h5py>=3.10",
+  "matplotlib>=3.8"
 ]
 
 [project.scripts]

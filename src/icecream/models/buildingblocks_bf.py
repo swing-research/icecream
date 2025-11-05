@@ -185,7 +185,7 @@ class DoubleConv(nn.Sequential):
         else:
             dropout_prob1 = dropout_prob2 = dropout_prob
 
-        print('use_bias(double conv)', use_bias)
+        # print('use_bias(double conv)', use_bias)
         # conv1
         self.add_module('SingleConv1',
                         SingleConv(conv1_in_channels, conv1_out_channels, kernel_size, order, num_groups,
@@ -311,7 +311,7 @@ class Encoder(nn.Module):
                     self.pooling = nn.AvgPool2d(kernel_size=pool_kernel_size)
         else:
             self.pooling = None
-        print('use_bias', use_bias)
+        # print('use_bias', use_bias)
         self.basic_module = basic_module(in_channels, out_channels,
                                          encoder=True,
                                          kernel_size=conv_kernel_size,

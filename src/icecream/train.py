@@ -44,32 +44,51 @@ def train_model(config_yaml):
     path_1 = data_config.tomo0
     path_2 = data_config.tomo1
     mask_path = data_config.mask
+    if len(mask_path) == 0:
+        mask_path = None
 
-    # Throw not implemented error if path_1 or path_2 has more than one volume
-    if isinstance(path_1, list) and len(path_1) > 1:
-        raise NotImplementedError("Multiple volumes not supported yet.")
-    if isinstance(path_2, list) and len(path_2) > 1:
-        raise NotImplementedError("Multiple volumes not supported yet.")
+    # # Throw not implemented error if path_1 or path_2 has more than one volume
+    # if isinstance(path_1, list) and len(path_1) > 1:
+    #     raise NotImplementedError("Multiple volumes not supported yet.")
+    # if isinstance(path_2, list) and len(path_2) > 1:
+    #     raise NotImplementedError("Multiple volumes not supported yet.")
 
     # if configs.data has an attribute called 'angles', use it, otherwise set to None
     angles = getattr(data_config, 'angles', None)
+    if len(angles) == 0:
+        angles = None
     if angles is not None:
-        angles_arr = np.loadtxt(angles, dtype=np.float32)
-        angle_min = np.min(angles_arr)
-        angle_max = np.max(angles_arr)
+        angle_max_set = []
+        angle_min_set = []
+        if len(angles) == 1:
+            print("Using angle file: {}".format(angles[0]))
+            angles_arr = np.loadtxt(angles[0], dtype=np.float32)
+            angle_min = np.min(angles_arr)
+            angle_max = np.max(angles_arr)
+            angle_max_set = [angle_max]*len(path_1)
+            angle_min_set = [angle_min] * len(path_1)
+        else:
+            for i in range(len(angles)):
+                print(f"Using angle file: {angles[i]}")
+                angles_arr = np.loadtxt(angles[i], dtype=np.float32)
+                angle_min = np.min(angles_arr)
+                angle_max = np.max(angles_arr)
+                angle_max_set.append(angle_max)
+                angle_min_set.append(angle_min)
     else:
-        angle_min = data_config.tilt_min
-        angle_max = data_config.tilt_max
-    assert angle_min < angle_max, "angle_min should be less than angle_max"
+        print(f"Using angle value in [{data_config.tilt_min},{data_config.tilt_max}]")
+        angle_min_set = [data_config.tilt_min]*len(path_1)
+        angle_max_set = [data_config.tilt_max]*len(path_1)
+    # assert (angle_min_set < angle_max_set), "angle_min should be less than angle_max"
 
     # Define the model and the trainer
     model = get_model(**configs.model_params)
     train_config = SimpleNamespace(**configs.train_params)
     trainer = EquivariantTrainer(configs=train_config,
                                  model=model,
-                                 angle_max=angle_max,
-                                 angle_min=angle_min,
-                                 angles=None,  # Set to specific angles, for further development
+                                 angle_max_set=angle_max_set,
+                                 angle_min_set=angle_min_set,
+                                 angles_set=None,  # Set to specific angles, for further development
                                  save_path=save_path
                                  )
     print("Loading the tomograms ...")
@@ -79,8 +98,8 @@ def train_model(config_yaml):
     print("Tomograms loaded.")
 
     # Possibly use pre-trained model
-    if hasattr(configs, 'pretrain_params'):
-        pretrain_params = SimpleNamespace(**configs.pretrain_params)
+    if hasattr(configs.train_params, 'pretrain_params'):
+        pretrain_params = SimpleNamespace(**configs.train_params.pretrain_params)
         if pretrain_params.use_pretrain:
             print("Using pretrained model parameters.")
             model_path = pretrain_params.model_path
@@ -101,14 +120,14 @@ def train_model(config_yaml):
 
     # Evaluate the model and reconstruct the tomogram
     vol_est = trainer.predict_dir(**configs.predict_params)
-    # Save the estimated volume
-    name = combine_names(path_1[0], path_2[0])
-    vol_save_path = os.path.join(save_path, name)
-    out = mrcfile.new(vol_save_path, overwrite=True)
-    out.set_data(np.moveaxis(vol_est.astype(np.float32), 2, 0))
-    out.close()
-    print(f"Volume saved at: {os.path.join(save_path, name)}")
-
+    for i in range(len(vol_est)):
+        # Save the estimated volume
+        name = combine_names(path_1[i], path_2[i])
+        vol_save_path = os.path.join(save_path, name)
+        out = mrcfile.new(vol_save_path, overwrite=True)
+        out.set_data(np.moveaxis(vol_est[i].astype(np.float32), 2, 0))
+        out.close()
+        print(f"Volume saved at: {os.path.join(save_path, name)}")
 
 def main(config: Optional[Path] = typer.Option(None, "--config", "-c", help="Path to YAML config file")):
     """Entry point mirroring the old argparse interface."""

@@ -10,12 +10,17 @@ Icecream provides a theoretically grounded and computationally efficient method 
 The codebase is under active development. 
 
 #### Updates 
+<<<<<<< HEAD
 Date 05.11.2025
 - Predict command allows a single tomogram as input
 - Remove the mask argument from the predict command as it is only used for training.
 - num_workers parameters is enforced to be 0 as we observed massive slow down with larger values.
 Date: 30.10.2025
 - Allow multiple volumes to be used for training and testing. Specific features:
+=======
+Date: 30.10.2025
+- Allow multiple volumes to be used for training and testing. Some specifities:
+>>>>>>> 0d2de7227d1a48c3c9ebe74e4206a0f07d834b1b
    - Scale the total number of iterations to be independent of the number of volume.
    - Using the command line, the option name should be repeated (icecream train --tomo1 path1/fbp1.mrc --tomo1 path2/fbp1.mrc ...)
 - Save csv and png plot of the loss over iterates. You will need to install matplotlib. You can run 'pip install -e .'
@@ -25,7 +30,11 @@ Date: 30.10.2025
 	- Added parameter save_dir_reconstructions in predict_params to save reconstructions elsewhere.
 	- Included pretrain_params into train_params.
 	- Changed scale to eq_weight to be more explicit.
+<<<<<<< HEAD
 	- Added parameters mask_tomo_side, mask_tomo_density_perc and mask_tomo_std_perc file to generate the mask in space domain of the tomogram.
+=======
+	- Added parameters mask_tomo_side, mask_tomo_density_perc and mask_tomo_std_perc file to generate the mask in space domaine of the tomogram.
+>>>>>>> 0d2de7227d1a48c3c9ebe74e4206a0f07d834b1b
 
 Date: 23.10.2025
 - Added save_tomo_n_iterations, to compute and save the current reconstruction during training

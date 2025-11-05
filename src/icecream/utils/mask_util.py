@@ -4,9 +4,9 @@ Functions to generate masks for a given volume
 This code is modified from the isonet codebase:https://github.com/IsoNet-cryoET/IsoNet/blob/master/bin/make_mask.py#L28
 """
 import numpy as np
-from scipy.ndimage.filters import gaussian_filter,maximum_filter
-from skimage.transform import resize
 from scipy.signal import convolve
+from skimage.transform import resize
+from scipy.ndimage.filters import gaussian_filter,maximum_filter
 
 def make_mask(tomo, mask_boundary = None, side = 5, density_percentage=50., std_percentage=50., surface=None):
 
