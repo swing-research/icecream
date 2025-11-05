@@ -9,6 +9,8 @@ Icecream provides a theoretically grounded and computationally efficient method 
 ### 🧊 Note
 The codebase is under active development. 
 
+⚠️ **Important**: PyTorch 2.9 currently has a bug affecting half-precision (FP16) training. Please use PyTorch 2.8 or earlier for now. See [this issue](https://github.com/pytorch/pytorch/issues/166122).
+
 #### Updates 
 Date: 30.10.2025
 - Allow multiple volumes to be used for training and testing. Some specifities:
@@ -52,9 +54,12 @@ conda activate icecream
 ```
 Install CUDA-enabled PyTorch from https://pytorch.org/get-started/locally/ based on your system configuration. For example, for Linux with CUDA 12.8
 
+
 ```bash
-pip install torch --index-url https://download.pytorch.org/whl/cu128
+pip install torch==2.8.0 torchvision==0.23.0 torchaudio==2.8.0 --index-url https://download.pytorch.org/whl/cu128
 ``` 
+**Note**: PyTorch 2.9 currently has a bug affecting half-precision (FP16) training. Please use PyTorch 2.8 or earlier for now. See [this issue](https://github.com/pytorch/pytorch/issues/166122).
+
 
 Install Icecream and its dependencies:
 
