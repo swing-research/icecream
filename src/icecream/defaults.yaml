@@ -60,7 +60,7 @@ model_params:
   dropout_prob: 0.1 # Dropout, kills randomly percentage of the weights of the model.s
 
 mask_params:
-  use_mask: true # Apply the missing wedge mak to the input tomograms.
+  use_mask: true # Apply a lamella mask to the tomogram. If a mask file is not provided, it will be generated similarly to IsoNet using the parameters below.
   mask_frac: 0.5 # Threshold value to
   mask_tomo_side : 5
   mask_tomo_density_perc : 50
