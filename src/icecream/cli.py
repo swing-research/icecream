@@ -172,11 +172,7 @@ def cli_predict(
     if tilt_max is not None: cli_updates["data"]["tilt_max"] = tilt_max
     if iter_load is not None: cli_updates["predict_params"]["iter_load"] = iter_load
     if save_dir_reconstructions is not None:
-        print(1)
         cli_updates["predict_params"]["save_dir_reconstructions"] = str(save_dir_reconstructions)
-    else:
-        cli_updates["predict_params"]["save_dir_reconstructions"] = cfg["data"]["save_dir"]
-
     if batch_size is not None:
         cli_updates["predict_params"]["batch_size"] = batch_size
     if crop_size is not None:
