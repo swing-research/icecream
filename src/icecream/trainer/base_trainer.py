@@ -334,7 +334,7 @@ class BaseTrainer:
                 pbar.update(1)
 
             loss_val = np.mean(loss_val_set)
-            ema = loss_val if ema is None else (alpha * loss_val + (1 - alpha) * ema)
+            ema = loss_val if np.isnan(ema) else (alpha * loss_val + (1 - alpha) * ema)
         print("####################")
         print("  Finished training the model.")
         print("####################")
