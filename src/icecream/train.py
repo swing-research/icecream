@@ -99,11 +99,12 @@ def train_model(config_yaml):
     print("Tomograms loaded.")
 
     # Possibly use pre-trained model
-    if hasattr(configs.train_params, 'pretrain_params'):
-        pretrain_params = SimpleNamespace(**configs.train_params.pretrain_params)
-        if pretrain_params.use_pretrain:
+    pretrain_params = configs.train_params.get('pretrain_params', None)
+    if pretrain_params is not None:
+        use_pretrain = pretrain_params.get('use_pretrain', False)
+        if use_pretrain:
             print("Using pretrained model parameters.")
-            model_path = pretrain_params.model_path
+            model_path = pretrain_params['model_path']
             if model_path:
                 print(f"Loading pretrained model from {model_path}")
                 trainer.load_model(model_path, pretrained=True)
