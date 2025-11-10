@@ -76,7 +76,7 @@ It should display the two main commands: `train` and `predict`.
 ### Update
 To get the latest version of ICECREAM, make sure to be on the main branch 
 ```bash
-git chechout main
+git checkout main
 ```
 and run 
 ```bash
