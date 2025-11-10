@@ -1,6 +1,7 @@
 """Train a model using the provided configuration and dataset and evaluate it."""
 
 import os
+import glob
 import json
 import yaml
 import torch
@@ -27,6 +28,11 @@ def train_model(config_yaml):
     data_config = SimpleNamespace(**configs.data)
     save_path = data_config.save_dir
 
+    if not(hasattr(configs.train_params, 'max_number_vol')):
+        configs.train_params['max_number_vol'] = -1
+    if not(hasattr(configs.train_params, 'iter_update_vol')):
+        configs.train_params['iter_update_vol'] = -1
+
     # create save directory if it does not exist
     if not os.path.exists(save_path):
         os.makedirs(save_path)
@@ -43,6 +49,17 @@ def train_model(config_yaml):
     # Collect data
     path_1 = data_config.tomo0
     path_2 = data_config.tomo1
+    if isinstance(path_1, str):
+        path_1 = glob.glob(path_1)
+        path_2 = glob.glob(path_2)
+    elif isinstance(path_1, list):
+        path_1_ = []
+        path_2_ = []
+        for i in range(len(path_1)):
+            path_1_.extend(glob.glob(path_1[i]))
+            path_2_.extend(glob.glob(path_2[i]))
+        path_1 = path_1_
+        path_2 = path_2_
     mask_path = data_config.mask
     if len(mask_path) == 0:
         mask_path = None
@@ -84,7 +101,6 @@ def train_model(config_yaml):
     # Define the model and the trainer
     model = get_model(**configs.model_params)
     train_config = SimpleNamespace(**configs.train_params)
-
     trainer = EquivariantTrainer(configs=train_config,
                                  model=model,
                                  angle_max_set=angle_max_set,
@@ -95,15 +111,16 @@ def train_model(config_yaml):
     print("Loading the tomograms ...")
     trainer.load_data(vol_paths_1=path_1,
                       vol_paths_2=path_2,
-                      vol_mask_path=mask_path, **configs.mask_params)
+                      vol_mask_path=mask_path, max_number_vol=train_config.max_number_vol, **configs.mask_params)
     print("Tomograms loaded.")
 
     # Possibly use pre-trained model
-    if hasattr(configs.train_params, 'pretrain_params'):
-        pretrain_params = SimpleNamespace(**configs.train_params.pretrain_params)
-        if pretrain_params.use_pretrain:
+    pretrain_params = configs.train_params.get('pretrain_params', None)
+    if pretrain_params is not None:
+        use_pretrain = pretrain_params.get('use_pretrain', False)
+        if use_pretrain:
             print("Using pretrained model parameters.")
-            model_path = pretrain_params.model_path
+            model_path = pretrain_params['model_path']
             if model_path:
                 print(f"Loading pretrained model from {model_path}")
                 trainer.load_model(model_path, pretrained=True)

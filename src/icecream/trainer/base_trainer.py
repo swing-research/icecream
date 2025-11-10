@@ -127,7 +127,9 @@ class BaseTrainer:
         vol_t = torch.tensor(vol, dtype=torch.float32, device='cpu')
         return self.normalize_volume(vol_t)
 
-    def load_data(self, vol_paths_1, vol_paths_2, vol_mask_path=None, use_mask=False, mask_frac=0.3, mask_tomo_side=5, mask_tomo_density_perc=50., mask_tomo_std_perc=50.):
+    def load_data(self, vol_paths_1, vol_paths_2, vol_mask_path=None, use_mask=False,
+                  mask_frac=0.3, mask_tomo_side=5, mask_tomo_density_perc=50., mask_tomo_std_perc=50.,
+                  iter = 0, max_number_vol = -1):
         """
         Load data from the given volume paths.
         Args:
@@ -137,11 +139,32 @@ class BaseTrainer:
         """
         print(vol_paths_1)
         print(vol_paths_2)
+        self.vol_paths_1_full = vol_paths_1
+        self.vol_paths_2_full = vol_paths_2
+        self.vol_mask_path_full = vol_mask_path
+
         self.vol_paths_1 = vol_paths_1
         self.vol_paths_2 = vol_paths_2
         self.vol_mask_path = vol_mask_path
 
         self.n_volumes = len(self.vol_paths_1)
+        if max_number_vol > 0:
+            self.n_volumes = min(self.n_volumes, max_number_vol)
+            if iter ==0:
+                vol_paths_1 = vol_paths_1[:self.n_volumes]
+                vol_paths_2 = vol_paths_2[:self.n_volumes]
+                if vol_mask_path is not None:
+                    vol_mask_path = vol_mask_path[:self.n_volumes]
+            else:
+                idx = np.random.randint(low=0, high=self.n_volumes, size=max_number_vol)
+                vol_paths_1 = vol_paths_1[idx]
+                vol_paths_2 = vol_paths_2[idx]
+                if vol_mask_path is not None:
+                    vol_mask_path = vol_mask_path[idx]
+
+        self.vol_paths_1 = vol_paths_1
+        self.vol_paths_2 = vol_paths_2
+        self.vol_mask_path = vol_mask_path
 
         if len(vol_paths_1) != len(vol_paths_2) and len(vol_paths_2) != 0:
             raise ValueError("The number of volume paths for vol_paths_1 and vol_paths_2 must be the same.")
@@ -257,8 +280,13 @@ class BaseTrainer:
 
         # disable_bar = not sys.stderr.isatty()  # keep logs clean on non-TTY (e.g., SLURM)
         pbar = tqdm(total=iterations, desc="Training", dynamic_ncols=True, disable=False)
-        ema = None
         alpha = 0.1  # EMA smoothing for display
+
+        # to load optimizer and the model from a checkpoint:
+        # checkpoint = torch.load(path, map_location=device)
+        # model.load_state_dict(checkpoint["model_state_dict"])
+        # optimizer.load_state_dict(checkpoint["optimizer_state_dict"])
+        # _move_optimizer_state_to_device(optimizer, device)
 
         print("####################")
         print("  Started training the model.")
@@ -269,6 +297,21 @@ class BaseTrainer:
         ema = np.nan
         while iteration < self.configs.iterations:
         # for iteration in range(iterations):
+            if iteration != 0 and iterations % self.configs.iter_update_vol == 0:
+                print("####################")
+                print("####################")
+                print("####################")
+                print("####################")
+                print("Updating the training volumes ...")
+                print("####################")
+                print("####################")
+                print("####################")
+                print("####################")
+                self.vol_data.volume_1_set.clear()
+                self.vol_data.volume_2_set.clear()
+                self.load_data(vol_paths_1=self.vol_paths_1_full,
+                      vol_paths_2=self.vol_paths_2_full,
+                      vol_mask_path=self.vol_mask_path_full, **configs.mask_params)()
             loss_val_set = []
             for data in self.vol_loader:
                 iteration += 1
@@ -518,3 +561,10 @@ class BaseTrainer:
             else:
                 vol_est_list.append(vol_est_1)
         return vol_est_list
+
+    def _move_optimizer_state_to_device(optimizer: torch.optim.Optimizer, device: torch.device):
+        for state in optimizer.state.values():
+            for k, v in list(state.items()):
+                if isinstance(v, torch.Tensor):
+                    state[k] = v.to(device)
+
