@@ -35,6 +35,7 @@ class BaseTrainer:
         else:
             device = str(raw_device)
         self.device = torch.device(device)
+        print(f"Using device: {self.device}")
 
         self.model = model.to(self.device)
         self.save_path = save_path
