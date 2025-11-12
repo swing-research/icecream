@@ -148,7 +148,7 @@ class BaseTrainer:
         self.vol_mask_path = vol_mask_path
 
         self.n_volumes = len(self.vol_paths_1)
-        if max_number_vol > 0:
+        if max_number_vol > 0 and self.n_volumes > max_number_vol:
             self.n_volumes = min(self.n_volumes, max_number_vol)
             if iter ==0:
                 vol_paths_1 = vol_paths_1[:self.n_volumes]
@@ -166,21 +166,23 @@ class BaseTrainer:
         self.vol_paths_2 = vol_paths_2
         self.vol_mask_path = vol_mask_path
 
-        if len(vol_paths_1) != len(vol_paths_2) and len(vol_paths_2) != 0:
+        if len(self.vol_paths_1) != len(self.vol_paths_2) and len(self.vol_paths_2) != 0:
             raise ValueError("The number of volume paths for vol_paths_1 and vol_paths_2 must be the same.")
+
+        print(f"Loading volumes. Number of volumes to be loaded: {len(self.vol_paths_1)}")
 
         # Load and store all the volume in a list on the CPU. Probably sub-optimal but enough at the moment.
         vol_1_set = []
         vol_2_set = []
         vol_mask_set = []
-        for i in range(len(vol_paths_1)):
-            vol_1_t = self.load_volume(vol_paths_1[i])
-            if len(vol_paths_2) != 0:
-                vol_2_t = self.load_volume(vol_paths_2[i])
-                print(f"Loaded volumes: \n {vol_paths_1[i]}\n and\n {vol_paths_2[i]}")
+        for i in range(len(self.vol_paths_1)):
+            vol_1_t = self.load_volume(self.vol_paths_1[i])
+            if len(self.vol_paths_2) != 0:
+                vol_2_t = self.load_volume(self.vol_paths_2[i])
+                print(f"Loaded volumes: \n {self.vol_paths_1[i]}\n and\n {self.vol_paths_2[i]}")
                 print(f"They have shape (x,y,z): {list(vol_1_t.shape)} and {list(vol_2_t.shape)}.")
             else:
-                print(f"Loaded volume: \n {vol_paths_1[i]}")
+                print(f"Loaded volume: \n {self.vol_paths_1[i]}")
                 print(f"It has shape (x,y,z): {list(vol_1_t.shape)}.")
 
             if vol_mask_path is not None:
@@ -190,7 +192,7 @@ class BaseTrainer:
                 vol_mask_t = torch.tensor(vol_mask, dtype=torch.float32, device='cpu')
             else:
                 if use_mask:
-                    if len(vol_paths_2) != 0:
+                    if len(self.vol_paths_2) != 0:
                         vol_avg = ((vol_1_t + vol_2_t) / 2).numpy()
                     else:
                         vol_avg = ((vol_1_t) / 2).numpy()
@@ -201,11 +203,11 @@ class BaseTrainer:
                     mask_frac = 0.0
             if self.load_device:
                 vol_1_set.append(vol_1_t.to(self.device))
-                if len(vol_paths_2) != 0:
+                if len(self.vol_paths_2) != 0:
                     vol_2_set.append(vol_2_t.to(self.device))
             else:
                 vol_1_set.append(vol_1_t.cpu())
-                if len(vol_paths_2) != 0:
+                if len(self.vol_paths_2) != 0:
                     vol_2_set.append(vol_2_t.cpu())
             if vol_mask_t is not None:
                 vol_mask_set.append(vol_mask_t.cpu())
