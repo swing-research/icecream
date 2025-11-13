@@ -36,6 +36,8 @@ train_params:
   window_type: "boxcar" # Shape of the crop.
   load_device: false # load all the full tomograms on the device. Will be faster but requires more memory.
   num_workers: 0 # Hardcoded to 0 at the moment.
+  max_number_vol: -1 # maximum number of tomograms to use during training. Set to -1 to use all tomograms.
+  iter_update_vol: -1 # number of iterations before changing the tomogram to use for training.
   pretrain_params:
     use_pretrain: false # Load a given model weigths if true.
     model_path: null # path to the model weights to load as pre-trained.

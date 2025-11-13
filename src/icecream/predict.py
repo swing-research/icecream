@@ -2,6 +2,7 @@
 
 import os
 import yaml
+import glob
 import typer
 import mrcfile
 import numpy as np
@@ -47,6 +48,17 @@ def predict(config_yaml):
     #     data_config.tomo1 = data_config.tomo0
     path_1 = data_config.tomo0
     path_2 = data_config.tomo1
+    if isinstance(path_1, str):
+        path_1 = glob.glob(path_1)
+        path_2 = glob.glob(path_2)
+    elif isinstance(path_1, list):
+        path_1_ = []
+        path_2_ = []
+        for i in range(len(path_1)):
+            path_1_.extend(glob.glob(path_1[i]))
+            path_2_.extend(glob.glob(path_2[i]))
+        path_1 = path_1_
+        path_2 = path_2_
     mask_path = data_config.mask
     if len(mask_path) == 0:
         mask_path = None
@@ -104,7 +116,7 @@ def predict(config_yaml):
     trainer.load_model(model_path)
     trainer.load_data(vol_paths_1=path_1,
                     vol_paths_2=path_2,
-                    vol_mask_path=mask_path)
+                    vol_mask_path=mask_path, max_number_vol=train_config.max_number_vol)
 
     # Reconstruct each volume in the list
     print("####################")

@@ -147,21 +147,20 @@ class BaseTrainer:
         self.vol_paths_2 = vol_paths_2
         self.vol_mask_path = vol_mask_path
 
-        self.n_volumes = len(self.vol_paths_1)
+        self.n_volumes = len(self.vol_paths_1_full)
         if max_number_vol > 0 and self.n_volumes > max_number_vol:
             self.n_volumes = min(self.n_volumes, max_number_vol)
-            if iter ==0:
+            if iter == 0:
                 vol_paths_1 = vol_paths_1[:self.n_volumes]
                 vol_paths_2 = vol_paths_2[:self.n_volumes]
                 if vol_mask_path is not None:
                     vol_mask_path = vol_mask_path[:self.n_volumes]
             else:
-                idx = np.random.randint(low=0, high=self.n_volumes, size=max_number_vol)
-                vol_paths_1 = vol_paths_1[idx]
-                vol_paths_2 = vol_paths_2[idx]
+                idx = np.random.randint(low=0, high=len(self.vol_paths_1_full), size=max_number_vol)
+                vol_paths_1 = [vol_paths_1[i] for i in idx]
+                vol_paths_2 = [vol_paths_2[i] for i in idx]
                 if vol_mask_path is not None:
-                    vol_mask_path = vol_mask_path[idx]
-
+                    vol_mask_path = [vol_mask_path[i] for i in idx]
         self.vol_paths_1 = vol_paths_1
         self.vol_paths_2 = vol_paths_2
         self.vol_mask_path = vol_mask_path
@@ -299,7 +298,10 @@ class BaseTrainer:
         ema = np.nan
         while iteration < self.configs.iterations:
         # for iteration in range(iterations):
-            if iteration != 0 and iterations % self.configs.iter_update_vol == 0:
+            loss_val_set = []
+            # Need to update volume loader before the for loop to take into account possible changes in the volumes
+            volume_need_update = (iteration // self.configs.iter_update_vol) != ((iteration - len(self.vol_loader)) // self.configs.iter_update_vol)
+            if iteration != 0 and self.configs.iter_update_vol > 0 and volume_need_update:
                 print("####################")
                 print("####################")
                 print("####################")
@@ -312,9 +314,11 @@ class BaseTrainer:
                 self.vol_data.volume_1_set.clear()
                 self.vol_data.volume_2_set.clear()
                 self.load_data(vol_paths_1=self.vol_paths_1_full,
-                      vol_paths_2=self.vol_paths_2_full,
-                      vol_mask_path=self.vol_mask_path_full, **configs.mask_params)()
-            loss_val_set = []
+                               vol_paths_2=self.vol_paths_2_full,
+                               vol_mask_path=self.vol_mask_path_full,
+                               max_number_vol=self.configs.max_number_vol,
+                               iter=iteration,
+                               **configs.mask_params)
             for data in self.vol_loader:
                 iteration += 1
                 inp_1 = data['input_1'][0].to(self.device)

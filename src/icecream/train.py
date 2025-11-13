@@ -28,9 +28,12 @@ def train_model(config_yaml):
     data_config = SimpleNamespace(**configs.data)
     save_path = data_config.save_dir
 
-    if not(hasattr(configs.train_params, 'max_number_vol')):
+    max_number_vol = configs.train_params.get('max_number_vol', None)
+    if max_number_vol is None:
         configs.train_params['max_number_vol'] = -1
-    if not(hasattr(configs.train_params, 'iter_update_vol')):
+        configs.train_params['iter_update_vol'] = -1
+    iter_update_vol = configs.train_params.get('iter_update_vol', None)
+    if iter_update_vol is None:
         configs.train_params['iter_update_vol'] = -1
 
     # create save directory if it does not exist
