@@ -39,12 +39,20 @@ The current version supports training on a single split of the tomograms.
 
 ## Installation
 
-Clone the repository:
+### 1. Clone the repository 
+Choose **one** of the following methods:
 
+**HTTPS (recommended):**
+```bash
+git clone https://github.com/swing-research/icecream.git
+cd icecream
+```
+**SSH (for users with SSH keys configured):**
 ```bash
 git clone git@github.com:swing-research/icecream.git
 cd icecream
 ```
+### 2. Create a Python environmnet
 
 Create a conda environment or you can use other environment managers like pipenv, poetry, uv etc with Python 3.11 or above. We will use conda
 with Python 3.11 in this example:
@@ -53,6 +61,8 @@ with Python 3.11 in this example:
 conda create -n icecream python=3.11 -y
 conda activate icecream
 ```
+### 3. Install PyTorch (CUDA-enabled)
+
 Install CUDA-enabled PyTorch from https://pytorch.org/get-started/locally/ based on your system configuration. For example, for Linux with CUDA 12.8
 
 ```bash
@@ -60,7 +70,8 @@ pip install torch==2.8.0 torchvision==0.23.0 torchaudio==2.8.0 --index-url https
 ``` 
 **Note**: PyTorch 2.9 currently has a bug affecting half-precision (FP16) training. Please use PyTorch 2.8 or earlier for now. See [this issue](https://github.com/pytorch/pytorch/issues/166122).
 
-Install Icecream and its dependencies:
+
+### 4. Install Icecream and its dependencies:
 
 ```bash
 pip install -e .
@@ -70,7 +81,7 @@ To test the installation, run:
 ```bash
 icecream --help
 ```
-It should display the two main commands: `train` and `predict`.
+It should display the three main commands: `train`, `predict`, and `split-tilt-series`.
 
 
 ### Update
