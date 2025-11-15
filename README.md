@@ -115,6 +115,7 @@ icecream train \
   --angles /path/to/angles.tlt \
   --save-dir /path/to/save/dir \
   --batch-size 8
+  --device 0 	# Optional (defaults to 0)
 ```
 
 This will train the model using the two tomograms `tomogram_0.mrc` and `tomogram_1.mrc` with tilt angles specified in `angles.tlt`. The reconstructions will be saved in the directory `/path/to/save/dir` along with the 'config.json' file containing the training and model parameters. The actual model files will be saved in `/path/to/save/dir/models`. The training batch size is set to 8. You can change other training parameters like the number of epochs, eq_weight, etc. 
