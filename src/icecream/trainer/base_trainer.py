@@ -56,6 +56,7 @@ class BaseTrainer:
 
         self.angle_max_set = angle_max_set
         self.angle_min_set = angle_min_set
+        self.iteration = -1
 
         self.setup()
 
@@ -233,7 +234,7 @@ class BaseTrainer:
             self.vol_loader = DataLoader(self.vol_data,
                                          batch_size=1,
                                          shuffle=True,
-                                         num_workers=0,
+                                         num_workers=self.configs.num_workers,
                                          pin_memory=False)
         else:
             self.vol_loader = DataLoader(self.vol_data,
@@ -260,10 +261,10 @@ class BaseTrainer:
 
         return est_1, est_2
 
-    def train(self, iterations=None, configs=None):
+    def train(self, iterations_tot=None, configs=None):
         self.model.train()
-        if iterations is None:
-            iterations = self.configs.iterations
+        if iterations_tot is None:
+            iterations_tot = self.configs.iterations
         if self.configs.use_mixed_precision:
             print("Using mixed precision training")
             scaler = torch.amp.GradScaler('cuda')
@@ -280,7 +281,7 @@ class BaseTrainer:
                 self.model = torch.compile(self.model, mode='max-autotune', fullgraph=True)
 
         # disable_bar = not sys.stderr.isatty()  # keep logs clean on non-TTY (e.g., SLURM)
-        pbar = tqdm(total=iterations, desc="Training", dynamic_ncols=True, disable=False)
+        pbar = tqdm(total=iterations_tot, desc="Training", dynamic_ncols=True, disable=False)
         alpha = 0.1  # EMA smoothing for display
 
         # to load optimizer and the model from a checkpoint:
@@ -293,22 +294,17 @@ class BaseTrainer:
         print("  Started training the model.")
         print("####################")
         # Actual training loop
-        iteration = -1
         loss_val = np.nan
         ema = np.nan
-        while iteration < self.configs.iterations:
+        while self.iteration < iterations_tot:
         # for iteration in range(iterations):
             loss_val_set = []
             # Need to update volume loader before the for loop to take into account possible changes in the volumes
-            volume_need_update = (iteration // self.configs.iter_update_vol) != ((iteration - len(self.vol_loader)) // self.configs.iter_update_vol)
-            if iteration != 0 and self.configs.iter_update_vol > 0 and volume_need_update:
-                print("####################")
-                print("####################")
+            volume_need_update = (self.iteration // self.configs.iter_update_vol) != ((self.iteration - len(self.vol_loader)) // self.configs.iter_update_vol)
+            if self.iteration != 0 and self.configs.iter_update_vol > 0 and volume_need_update:
                 print("####################")
                 print("####################")
                 print("Updating the training volumes ...")
-                print("####################")
-                print("####################")
                 print("####################")
                 print("####################")
                 self.vol_data.volume_1_set.clear()
@@ -317,10 +313,10 @@ class BaseTrainer:
                                vol_paths_2=self.vol_paths_2_full,
                                vol_mask_path=self.vol_mask_path_full,
                                max_number_vol=self.configs.max_number_vol,
-                               iter=iteration,
+                               iter=self.iteration,
                                **configs.mask_params)
             for data in self.vol_loader:
-                iteration += 1
+                self.iteration += 1
                 inp_1 = data['input_1'][0].to(self.device)
                 inp_2 = data['input_2'][0].to(self.device)
                 idx = data['idx'][0].item()
@@ -341,10 +337,10 @@ class BaseTrainer:
                     self.optimizer.step()
                 loss_val_set.append(float(loss.detach().item()))
 
-                if iteration > len(self.vol_loader) and iteration % self.configs.compute_avg_loss_n_iterations == 0:
+                if self.iteration > len(self.vol_loader) and self.iteration % self.configs.compute_avg_loss_n_iterations == 0:
                     self.compute_average_loss()
 
-                    iter_ = np.arange(0, iteration * self.n_volumes+1, self.configs.compute_avg_loss_n_iterations)[1:]
+                    iter_ = np.arange(0, self.iteration * self.n_volumes+1, self.configs.compute_avg_loss_n_iterations)[1:]
                     iter_ = iter_[:len(self.loss_avg_set)]
                     plt.semilogy(iter_, np.array(self.loss_avg_set), label='Average loss')
                     plt.savefig(os.path.join(self.save_path, 'losse_avg.png'), dpi=300, bbox_inches='tight')
@@ -363,10 +359,10 @@ class BaseTrainer:
                         for row in zip(iter_, self.loss_avg_set, self.equi_loss_avg_set, self.obs_loss_avg_set):
                             writer.writerow(row)
 
-                if iteration > len(self.vol_loader) and iteration % self.configs.save_n_iterations == 0:
-                    self.save_model(iteration)
+                if self.iteration > len(self.vol_loader) and self.iteration % self.configs.save_n_iterations == 0:
+                    self.save_model(self.iteration)
 
-                if iteration > len(self.vol_loader) and self.configs.save_tomo_n_iterations > 0 and iteration % self.configs.save_tomo_n_iterations == 0:
+                if self.iteration > len(self.vol_loader) and self.configs.save_tomo_n_iterations > 0 and self.iteration % self.configs.save_tomo_n_iterations == 0:
                     print("Predict tomograms with current model.")
                     vol_est_list = self.predict_dir(**configs.predict_params)
                     for i in range(len(vol_est_list)):
@@ -379,7 +375,7 @@ class BaseTrainer:
                         out.set_data(np.moveaxis(vol_est_list[i].astype(np.float32), 2, 0))
                         out.close()
 
-                pbar.set_postfix(iteration=iteration + 1, ema_loss=f"{ema:.4f}", loss=f"{loss_val:.4f}")
+                pbar.set_postfix(iteration=self.iteration + 1, ema_loss=f"{ema:.4f}", loss=f"{loss_val:.4f}")
                 pbar.update(1)
 
             loss_val = np.mean(loss_val_set)
@@ -462,6 +458,7 @@ class BaseTrainer:
             'diff_loss_avg_set': self.diff_loss_avg_set,
             'obs_loss_avg_set': self.obs_loss_avg_set,
             'equi_loss_avg_set': self.equi_loss_avg_set,
+            'iteration': iteration
         }, model_path)
 
         # save the configs as json
@@ -470,32 +467,29 @@ class BaseTrainer:
             json.dump(self.configs.__dict__, f, indent=4)
         print(f"Model saved to {model_path}")
 
-    def load_model(self, model_path, pretrained=False):
+    def load_model(self, model_path):
         """
         Load the model state from the given path.
         Args:
             model_path (str): Path to the model state file.
+            only_model: if True, only load the model weights, otherwise load optimizer and loss states too.
         """
         if not os.path.exists(model_path):
             raise FileNotFoundError(f"Model path does not exist: {model_path}")
 
         checkpoint = torch.load(model_path, weights_only=False, map_location=self.device)
-        if pretrained:
-            try:
-                print("Loading pretrained model")
-                self.model.load_state_dict(checkpoint['model_state_dict'], strict=False)
-            except KeyError as e:
-                self.model.load_state_dict(checkpoint, strict=False)
-        else:
-            print("Loading model from checkpoint")
-            self.model.load_state_dict(checkpoint['model_state_dict'])
-            self.optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
-            self.loss_set = checkpoint['loss_set']
-            self.diff_loss_set = checkpoint['diff_loss_set']
-            self.loss_avg_set = checkpoint['loss_avg_set']
-            self.diff_loss_avg_set = checkpoint['diff_loss_avg_set']
-            self.obs_loss_avg_set = checkpoint['obs_loss_avg_set']
-            self.equi_loss_avg_set = checkpoint['equi_loss_avg_set']
+        print("Loading model from checkpoint")
+        self.model.load_state_dict(checkpoint['model_state_dict'])
+        self.optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
+        self.loss_set = checkpoint['loss_set']
+        self.diff_loss_set = checkpoint['diff_loss_set']
+        self.loss_avg_set = checkpoint['loss_avg_set']
+        self.diff_loss_avg_set = checkpoint['diff_loss_avg_set']
+        self.obs_loss_avg_set = checkpoint['obs_loss_avg_set']
+        self.equi_loss_avg_set = checkpoint['equi_loss_avg_set']
+        self.iteration = 30000
+
+        self.move_optimizer_state_to_device(self.optimizer, self.device)
 
         print(f"Model loaded from {model_path}")
 
@@ -568,7 +562,7 @@ class BaseTrainer:
                 vol_est_list.append(vol_est_1)
         return vol_est_list
 
-    def _move_optimizer_state_to_device(optimizer: torch.optim.Optimizer, device: torch.device):
+    def move_optimizer_state_to_device(self, optimizer: torch.optim.Optimizer, device: torch.device):
         for state in optimizer.state.values():
             for k, v in list(state.items()):
                 if isinstance(v, torch.Tensor):

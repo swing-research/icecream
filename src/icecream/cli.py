@@ -64,6 +64,8 @@ def cli_train(
                                                  help="(Optional) Maximum tilt angle in degrees. Default is +60."),
         save_dir: Optional[Path] = typer.Option(None,
                                                 help="(Optional) Path to the directory to save the trained model. Default is 'runs/default/'."),
+        save_dir_reconstructions: Optional[Path] = typer.Option(None,
+                                                help="(Optional) Path to the save the reconstructions. Defaults is same as save_dire."),
 
         # training knobs
         batch_size: Optional[int] = typer.Option(None,
@@ -73,6 +75,8 @@ def cli_train(
         eq_weight: Optional[float] = typer.Option(None,
                                               help="(Optional) Equivariant regularization weight. Increase to get more regularization. Default is 2."),
         iterations: Optional[int] = typer.Option(None, help="(Optional) Number of iterations. Default is 50000."),
+        learning_rate: Optional[float] = typer.Option(None,
+                                                      help="(Optional) Learning rate. Default is 0.001."),
         save_n_iterations: Optional[int] = typer.Option(None,
                                                         help="(Optional) Checkpoint for the model every N iterations. Default is 5000."),
         compute_avg_loss_n_iterations: Optional[int] = typer.Option(None,
@@ -100,12 +104,15 @@ def cli_train(
         cli_updates["train_params"]["crop_size"] = crop_size
         cli_updates["predict_params"]["stride"] = crop_size//2
     if iterations is not None: cli_updates["train_params"]["iterations"] = iterations
+    if learning_rate is not None: cli_updates["train_params"]["learning_rate"] = learning_rate
     if save_n_iterations is not None: cli_updates["train_params"]["save_n_iterations"] = save_n_iterations
     if eq_weight is not None: cli_updates["train_params"]["eq_weight"] = eq_weight
     if compute_avg_loss_n_iterations is not None:
         cli_updates["train_params"]["compute_avg_loss_n_iterations"] = compute_avg_loss_n_iterations
     if save_tomo_n_iterations is not None:
         cli_updates["train_params"]["save_tomo_n_iterations"] = save_tomo_n_iterations
+    if save_dir_reconstructions is not None:
+        cli_updates["predict_params"]["save_dir_reconstructions"] = str(save_dir_reconstructions)
 
     if pretrain_path is not None:
         cli_updates["pretrain_params"] = {
@@ -160,6 +167,7 @@ def cli_predict(
         crop_size: Optional[int] = typer.Option(None,
                                                 help="(Optional) Crop size of subtomograms for prediction. Default is 72x72."),
         iter_load: int = typer.Option(-1, help="Iteration to load (default: latest in save_dir/model)"),
+        max_number_vol: int = typer.Option(1, help="maximum number of tomograms to use during training. Set to -1 to use all tomograms."),
 ):
     cfg = load_defaults()
     if config:
@@ -180,6 +188,7 @@ def cli_predict(
     if crop_size is not None:
         cli_updates["train_params"]["crop_size"] = crop_size
         cli_updates["predict_params"]["stride"] = crop_size//2
+    if max_number_vol is not None: cli_updates["train_params"]["max_number_vol"] = max_number_vol
 
     cfg = deep_update(cfg, cli_updates)
 

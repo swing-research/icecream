@@ -15,6 +15,7 @@ from types import SimpleNamespace
 from .models import get_model
 from .utils.utils import combine_names
 from .trainer import EquivariantTrainer
+from .predict import get_latest_iteration
 
 def train_model(config_yaml):
     # Reproducibility
@@ -123,18 +124,26 @@ def train_model(config_yaml):
         use_pretrain = pretrain_params.get('use_pretrain', False)
         if use_pretrain:
             print("Using pretrained model parameters.")
-            model_path = pretrain_params['model_path']
-            if model_path:
-                print(f"Loading pretrained model from {model_path}")
-                trainer.load_model(model_path, pretrained=True)
-            else:
+            model_path = pretrain_params.get('model_path',None)
+            if model_path is None:
+                model_save_path = os.path.join(data_config.save_dir, 'model')
+                iteration = configs.predict_params['iter_load']
+                if iteration == -1 and os.path.exists(model_save_path):
+                    iteration = get_latest_iteration(model_save_path)
+                if iteration == -1:
+                    print(f"No saved model found in {model_save_path}")
+                model_path = os.path.join(model_save_path, f'model_iteration_{iteration}.pt')
+            if not os.path.exists(model_path):
                 print("No pretrained model path provided, training from scratch.")
+            else:
+                print(f"Loading pretrained model from {model_path}")
+                trainer.load_model(model_path)
 
     configs.predict_params['batch_size'] = configs.train_params['batch_size']
     configs.predict_params['crop_size'] = configs.train_params['crop_size']
 
     # Train the model
-    trainer.train(iterations=train_config.iterations, configs=configs)
+    trainer.train(iterations_tot=train_config.iterations, configs=configs)
 
     # Save the final model after full training
     trainer.save_model(iteration=train_config.iterations)
