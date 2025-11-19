@@ -52,6 +52,9 @@ def predict(config_yaml):
         mask_path = None
     # create save directory if it does not exist
     save_dir_reconstructions = predict_config.save_dir_reconstructions
+
+    if save_dir_reconstructions is None:
+        save_dir_reconstructions = data_config.save_dir
     os.makedirs(save_dir_reconstructions, exist_ok=True)
 
     # if configs.data has an attribute called 'angles', use it, otherwise set to None
