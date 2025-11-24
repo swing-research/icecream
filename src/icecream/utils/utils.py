@@ -1024,3 +1024,149 @@ def split_tilt_series(path_mrc, path_angle=None, tilt_min=None, tilt_max=None, s
             np.savetxt(os.path.join(save_dir, name_ts + "_angles2.tlt"), angles2, fmt="%.6f")
         print("Split angle file has been saved.")
 
+# python
+import numpy as np
+import mrcfile
+import matplotlib.pyplot as plt
+path_mrc = "/Users/debarnot/Documents/Data/CryoET/Ricardo/tilt_series_4dev/Tkivui_HDCR/tomo2_L1G1/tomo2_L1G1-dose_filt-bin4-cryocare.rec"
+patch_size = 72
+
+
+def select_position_tilt_series(path_mrc, patch_size=72, save_dir=None):
+    """
+    Interactive position selector for a tilt-series.
+
+    - Shows a 2D projection (mean over tilt axis) of the tilt-series from `path_mrc`.
+    - User clicks once to choose a position.
+    - Opens another window showing a square crop of size `patch_size` around the chosen position.
+    - Returns (row, col, crop) where crop is a NumPy array of shape (patch_size, patch_size).
+      Returns None if the user closed the window without clicking.
+    """
+    # Load tilt-series
+    ts = np.float32(mrcfile.open(path_mrc, permissive=True).data)
+    # determine tilt axis (smallest dimension)
+    tilt_ax = int(np.argmin(ts.shape))
+    # Select the central slice along non-tilt axes
+    if tilt_ax == 0:
+        projection = ts[ts.shape[0]//2]
+    elif tilt_ax == 1:
+        projection = ts[:, ts.shape[0]//2]
+    else:
+        projection = ts[:, :, ts.shape[0] // 2]
+
+    coords = []
+    fig, ax = plt.subplots()
+    ax.imshow(projection, cmap='gray', origin='upper')
+    ax.set_title('Click to select position (close this window to cancel)')
+
+    def onclick(event):
+        # only accept clicks inside axes with valid data coords
+        if event.inaxes is None or event.xdata is None or event.ydata is None:
+            return
+        # x is column, y is row
+        col = int(round(event.xdata))
+        row = int(round(event.ydata))
+        coords.append((row, col))
+        plt.close(fig)
+
+    cid = fig.canvas.mpl_connect('button_press_event', onclick)
+    plt.show()
+    fig.canvas.mpl_disconnect(cid)
+
+    if not coords:
+        return None
+
+    row, col = coords[0]
+    half = patch_size // 2
+
+    if tilt_ax == 0:
+        crop = ts[ts.shape[0]//2-half:ts.shape[0]//2+half, row-half:row+half, col-half:col+half]
+    elif tilt_ax == 1:
+        crop = ts[row-half:row+half, ts.shape[1]//2-half:ts.shape[1]//2+half, col-half:col+half]
+    else:
+        crop = ts[row-half:row+half, col-half:col+half, ts.shape[2]//2-half:ts.shape[2]//2+half]
+
+    show_orthogonal_slices(crop, cmap='gray', vmin=None, vmax=None, figsize=(10, 8), show_crosshair=False)
+    # # show crop in a new window
+    # fig2, ax2 = plt.subplots()
+    # ax2.imshow(crop, cmap='gray', origin='upper')
+    # ax2.set_title(f'Crop at (row={row}, col={col})')
+    # ax2.axis('off')
+    # plt.show()
+
+    if save_dir is None:
+        save_dir = path_mrc[:path_mrc.rfind(os.path.sep)]
+    if not os.path.exists(save_dir):
+        os.makedirs(save_dir)
+        print(f"Created directory: {save_dir}")
+    else:
+        print(f"Directory already exists: {save_dir}")
+    # save coords to a text file
+    name_ts = os.path.basename(path_mrc)[:path_mrc.rfind('.')]
+    coord_file = os.path.join(save_dir, name_ts + "_selected_position.txt")
+    with open(coord_file, 'w') as f:
+        f.write(f"{row} {col}\n")
+    print(f"Selected position saved to: {coord_file}")
+
+
+from matplotlib.gridspec import GridSpec
+def show_orthogonal_slices(volume, cmap='gray', vmin=None, vmax=None, figsize=(8,6), show_crosshair=False):
+    """
+    Display central XY, XZ and YZ slices of a 3D `volume` (assumed shape: Z, Y, X).
+    - Left: central XY slice (spans both rows)
+    - Top-right: XZ slice (depth vs X)
+    - Bottom-right: YZ slice (depth vs Y)
+    """
+    assert volume.ndim == 3, "volume must be 3D (Z, Y, X)"
+
+    Z, Y, X = volume.shape
+    zc, yc, xc = Z // 2, Y // 2, X // 2
+
+    xy = volume[zc, :, :]        # shape (Y, X)
+    xz = volume[:, yc, :]        # shape (Z, X) -> Z vertical, X horizontal
+    yz = volume[:, :, xc]        # shape (Z, Y) -> Z vertical, Y horizontal
+
+    fig = plt.figure(figsize=figsize)
+    gs = GridSpec(2, 2, width_ratios=[volume.shape[1]//volume.shape[0], 1], height_ratios=[1, volume.shape[2]//volume.shape[0]], wspace=0.05, hspace=0.05)
+
+    ax_xy = fig.add_subplot(gs[1, 0])
+    ax_xz = fig.add_subplot(gs[0, 0])
+    ax_yz = fig.add_subplot(gs[1, 1])
+
+    im_xy = ax_xy.imshow(xy, cmap=cmap, origin='upper', vmin=vmin, vmax=vmax, aspect='auto')
+    ax_xy.set_title('XY')
+    ax_xy.set_xlabel('X')
+    ax_xy.set_ylabel('Y')
+    ax_xy.axis('off')
+
+    im_xz = ax_xz.imshow(xz, cmap=cmap, origin='upper', vmin=vmin, vmax=vmax, aspect='auto')
+    ax_xz.set_title('XZ')
+    ax_xz.set_xlabel('X')
+    ax_xz.set_ylabel('Z')
+    ax_xz.axis('off')
+
+    # for YZ swap axes so horizontal = Y, vertical = Z (transpose)
+    im_yz = ax_yz.imshow(yz.T, cmap=cmap, origin='upper', vmin=vmin, vmax=vmax, aspect='auto')
+    ax_yz.set_title('YZ')
+    ax_yz.set_xlabel('Y')
+    ax_yz.set_ylabel('Z')
+    ax_yz.axis('off')
+
+    # remove ticks for a cleaner look
+    for a in (ax_xz, ax_yz):
+        a.tick_params(axis='both', which='both', length=0)
+
+    if show_crosshair:
+        # crosshair on XY
+        ax_xy.axhline(y=yc, color='r', lw=0.8)
+        ax_xy.axvline(x=xc, color='r', lw=0.8)
+        # slice indicators on side views (red lines)
+        ax_xz.axvline(x=xc, color='r', lw=0.8)   # vertical line at X position on XZ
+        ax_xz.axhline(y=zc, color='r', lw=0.8)   # horizontal line at Z position on XZ
+        ax_yz.axvline(x=yc, color='r', lw=0.8)   # vertical line at Y position on YZ (since we transposed)
+        ax_yz.axhline(y=zc, color='r', lw=0.8)   # horizontal line at Z position on YZ
+
+    # # optional colorbar tied to the big image
+    # cax = fig.add_axes([0.92, 0.15, 0.02, 0.7])
+    # fig.colorbar(im_xy, cax=cax)
+    plt.show()

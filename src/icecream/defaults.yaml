@@ -41,6 +41,7 @@ train_params:
   pretrain_params:
     use_pretrain: false # Load a given model weigths if true.
     model_path: null # path to the model weights to load as pre-trained.
+  path_position_crop: null # Path to a txt file containing the positions of the crops to use to visualize training. If central crop is used.
 
 predict_params:
   save_dir_reconstructions: null # where to save the reconstructions. Default is same as data.save_dir.
