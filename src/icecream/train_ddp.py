@@ -161,13 +161,13 @@ def worker(rank, gpus,
                  vol_mask_set):
     """Function to be run on each GPU for distributed training."""
     seed = train_config.seed
-    torch.manual_seed(seed)
-    np.random.seed(seed)
+    torch.manual_seed(seed+rank)
+    np.random.seed(seed+rank)
     torch.backends.cudnn.deterministic = True
     world_size = len(gpus)
 
     master_addr = "127.0.0.1"
-    master_port = "29500"  # choose a free port
+    master_port = "29501"  # choose a free port
     dist.init_process_group(
         backend="nccl",
         init_method=f"tcp://{master_addr}:{master_port}",
@@ -176,6 +176,7 @@ def worker(rank, gpus,
     )
 
     model = get_model(**configs.model_params)
+    print(f"Model initialized on rank {rank}.")
     trainer = BaseTrainerDDP(configs=train_config,
                              model=model,
                              world_size = world_size,
@@ -186,7 +187,7 @@ def worker(rank, gpus,
                              save_path=save_path
                              )
     
-
+    print(f"Rank {rank} loading data.")
     trainer.load_data(vol_paths_1 =vol_path_1,
                    vol_paths_2=vol_path_2,
                      vol_mask_path=mask_path, 
@@ -194,6 +195,8 @@ def worker(rank, gpus,
                      vol_2_set=vol_2_set,
                      vol_mask_set=vol_mask_set,
                      mask_frac=mask_frac)
+    print(f"Rank {rank} data loaded.")
+    
     # Possibly use pre-trained model
     if pretrain_params is not None:
         use_pretrain = pretrain_params.get('use_pretrain', False)
@@ -206,6 +209,7 @@ def worker(rank, gpus,
             else:
                 print(f"No pretrained model path provided on rank {rank}, training from scratch.")
 
+    print(f"Rank {rank} starting training for {train_config.iterations} iterations.")
     trainer.train(iterations=train_config.iterations, configs=train_config)
 
     print(f"Rank {rank} finished training.")

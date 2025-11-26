@@ -47,6 +47,7 @@ class BaseTrainerDDP:
                                                               device_ids=[self.device])
         self.save_path = save_path
 
+        print(f"Trainer initialized on rank {self.rank} with device {self.device}.")
 
         self.loss_set = []
         self.diff_loss_set = []
