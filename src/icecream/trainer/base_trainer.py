@@ -189,8 +189,8 @@ class BaseTrainer:
             if vol_mask_t is not None:
                 vol_mask_set.append(vol_mask_t.cpu())
 
-        if len(vol_mask_set) == 1:
-            vol_mask_set = None
+        # if len(vol_mask_set) == 1:
+        #     vol_mask_set = None
 
         self.vol_data = MultiVolume(volume_1_set=vol_1_set,
                                     volume_2_set=vol_2_set,
