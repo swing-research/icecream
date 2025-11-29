@@ -10,32 +10,13 @@ Icecream provides a theoretically grounded and computationally efficient method 
 The codebase is under active development. 
 
 ⚠️ **Important**: PyTorch 2.9 currently has a bug affecting half-precision (FP16) training. Please use PyTorch 2.8 or earlier for now. See [this issue](https://github.com/pytorch/pytorch/issues/166122).
-#### Updates 
-Date 05.11.2025
-- **Allow multiple volumes to be used for training and testing**. Specific features:
-   - Scale the total number of iterations to be independent of the number of volume.
-   - Using the command line, the option name should be repeated (icecream train --tomo1 path1/fbp1.mrc --tomo1 path2/fbp1.mrc ...).
-- Predict command allows a single tomogram as input.
-- Remove the mask argument from the predict command as it is only used for training.
-- num_workers parameters is enforced to be 0 as we observed massive slow down with larger values.
-- Save csv and png plot of the loss over iterates. You will need to install matplotlib. You can run 'pip install -e .'
-- Parameters updates:
-	- Added train_params.load_device to allow the tomograms and masks to be loaded on the GPU directly if space allows it.
-	-  Added iter_load in predict_params to choose which model to load.
-	- Added parameter save_dir_reconstructions in predict_params to save reconstructions elsewhere.
-	- Included pretrain_params into train_params.
-	- **Changed scale to eq_weight to be more explicit**.
-	- Added parameters mask_tomo_side, mask_tomo_density_perc and mask_tomo_std_perc file to generate the mask in space domain of the tomogram.
 
-Date: 23.10.2025
-- Added save_tomo_n_iterations, to compute and save the current reconstruction during training
-- Added the command line split-tilt-series to split a tilt series along the angle dimension.
-- Added comments on the parameters of the default yaml file
-- Code cleanup. 
-- Added support to use a pre-trained model as initialization during training. 
-- Added an option for torch.compile.
+### ⚠️ Version Notice
+v0.3 contained a bug that degraded reconstruction performance relative to v0.2.  
+If you downloaded the code between 05.11.2025–28.11.2025, please update to the latest version.
 
-The current version supports training on a single split of the tomograms.  
+### 📄 Changelog
+See the full list of updates in the [CHANGELOG.md](CHANGELOG.md).
 
 ## Installation
 
