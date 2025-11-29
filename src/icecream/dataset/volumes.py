@@ -93,7 +93,10 @@ class singleVolume:
         random_cube = torch.rand(self.crop_size,self.crop_size,self.crop_size).to(self.device)
 
 
-        _,_, k_sets, distances = generate_all_cube_symmetries_torch(random_cube,self.wedge,use_flips = self.use_flips, min_distance=self.min_distance)
+        _,_, k_sets, distances = generate_all_cube_symmetries_torch(random_cube,
+                                                                    self.wedge,
+                                                                    use_flips = self.use_flips, 
+                                                                    min_distance=self.min_distance)
 
         self.k_sets = k_sets
         self.distances = distances

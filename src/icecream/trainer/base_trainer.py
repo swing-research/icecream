@@ -93,17 +93,19 @@ class BaseTrainer:
     def normalize_volume(self, vol):
         return (vol - vol.mean()) / (vol.std() + 1e-8)
 
-    def initialize_wedge(self, angle_max, angle_min, crop_size):
+    def initialize_wedge(self, angle_max, angle_min, crop_size,wedge_support=None):
         """
         Initialize the wedge for the model.
         This method should be overridden by subclasses if needed.
         """
         assert angle_min < angle_max, "angle_min should be less than angle_max"
+        if wedge_support is None:
+            wedge_support = self.configs.wedge_low_support
         wedge,ball = get_wedge_3d_new(crop_size,
                                       max_angle = angle_max,
                                       min_angle = angle_min,
                                       rotation = 0,
-                                      low_support=self.configs.wedge_low_support)
+                                      low_support=wedge_support)
         wedge_t = torch.tensor(wedge, dtype=torch.float32, device=self.device)
         wedge_t_sym = symmetrize_3D(wedge_t)
         wedge_t = (wedge_t_sym + wedge_t)/2
