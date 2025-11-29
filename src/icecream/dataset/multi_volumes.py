@@ -3,6 +3,7 @@ import torch
 import numpy as np
 from torch.utils.data import Dataset
 from icecream.utils.utils import generate_all_cube_symmetries_torch, crop_volumes, crop_volumes_mask
+from skimage.filters import window as skimage_window
 
 class MultiVolume(Dataset):
     def __init__(self, volume_1_set,volume_2_set, 
@@ -14,6 +15,7 @@ class MultiVolume(Dataset):
                  mask_frac = 0.3,
                  n_crops = 2,
                  normalize_crops = False,
+                 window_type = 'boxcar',
                  device = 'cpu'):
         """
         Structure to keep track of all useful information regarding the tomograms.
@@ -29,6 +31,10 @@ class MultiVolume(Dataset):
         self.use_flips = use_flips
         self.normalize_crops = normalize_crops
         self.n_crops = n_crops
+
+        self.window = torch.tensor(skimage_window(window_type, (crop_size,crop_size, crop_size)),
+                                   dtype=torch.float32, 
+                                   device=self.device)[None]
 
         self.generate_rotation_indeces()
 
@@ -93,8 +99,8 @@ class MultiVolume(Dataset):
                                                 self.mask_frac,
                                                 self.crop_size,
                                                 n_crops)
-        crops_1 = torch.stack(crops_1)
-        crops_2 = torch.stack(crops_2)
+        crops_1 = torch.stack(crops_1)*self.window
+        crops_2 = torch.stack(crops_2)*self.window
         if self.normalize_crops:
             crops_1, crops_2 = self.cropwisze_normalize(crops_1, crops_2)
         data_dict = {'input_1': crops_1, 

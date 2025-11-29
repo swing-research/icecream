@@ -105,7 +105,8 @@ class BaseTrainer:
                                       max_angle = angle_max,
                                       min_angle = angle_min,
                                       rotation = 0,
-                                      low_support=wedge_support)
+                                      low_support=wedge_support,
+                                      use_spherical_support=self.configs.use_spherical_support)
         wedge_t = torch.tensor(wedge, dtype=torch.float32, device=self.device)
         wedge_t_sym = symmetrize_3D(wedge_t)
         wedge_t = (wedge_t_sym + wedge_t)/2
@@ -204,7 +205,7 @@ class BaseTrainer:
                                     use_flips=self.configs.use_flips,
                                     n_crops=self.configs.batch_size,
                                     normalize_crops=self.configs.normalize_crops,
-                                    device=self.device)
+                                    device='cpu')
 
         # Hardcoded for now as we observe massive slowdown with other values
         self.configs.num_workers = 0

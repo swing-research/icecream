@@ -42,6 +42,8 @@ class EquivariantTrainer(BaseTrainer):
                                               self.angle_min_set[i], 
                                               self.crop_size_eq,
                                               wedge_support=self.configs.ref_wedge_support)[:-1, :-1, :-1]
+            
+            wedge_ref = self.get_real_binary_filter(wedge_ref)
 
             if self.load_device:
                 wedge_ref = wedge_ref.to(self.device)
@@ -104,6 +106,8 @@ class EquivariantTrainer(BaseTrainer):
                                                     window=self.window))*self.configs.eq_weight
         loss = obs_loss + equi_loss_est
         equi_loss = equi_loss_est
+
+        #print(loss.item(), obs_loss.item(), equi_loss.item())
 
         with torch.no_grad():
             self.loss_set.append(loss.item())
