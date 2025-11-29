@@ -4,9 +4,9 @@ All notable changes to this project will be documented in this file.
 The format is based on Keep a Changelog (https://keepachangelog.com)
 and uses categories like Added, Changed, Fixed, Removed.
 
-## [Unreleased]  ← optional section
 
-## [v0.3] - 2025-11-05
+
+## [v0.3] - 05.11.2025
 ### Added
 - Allow multiple volumes for training and testing.  
   - Iterations now scale independently of number of volumes.  
@@ -30,7 +30,7 @@ and uses categories like Added, Changed, Fixed, Removed.
 
 ---
 
-## [v0.2] - 2025-10-23
+## [v0.2] - 23.10.2025
 ### Added
 - `save_tomo_n_iterations` to compute/save intermediate reconstructions.
 - `split-tilt-series` command to split a tilt series along the angle dimension.
