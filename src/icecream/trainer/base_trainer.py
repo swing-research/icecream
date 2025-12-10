@@ -94,17 +94,20 @@ class BaseTrainer:
     def normalize_volume(self, vol):
         return (vol - vol.mean()) / (vol.std() + 1e-8)
 
-    def initialize_wedge(self, angle_max, angle_min, crop_size):
+    def initialize_wedge(self, angle_max, angle_min, crop_size,wedge_support=None):
         """
         Initialize the wedge for the model.
         This method should be overridden by subclasses if needed.
         """
         assert angle_min < angle_max, "angle_min should be less than angle_max"
+        if wedge_support is None:
+            wedge_support = self.configs.wedge_low_support
         wedge,ball = get_wedge_3d_new(crop_size,
                                       max_angle = angle_max,
                                       min_angle = angle_min,
                                       rotation = 0,
-                                      low_support=self.configs.wedge_low_support)
+                                      low_support=wedge_support,
+                                      use_spherical_support=self.configs.use_spherical_support)
         wedge_t = torch.tensor(wedge, dtype=torch.float32, device=self.device)
         wedge_t_sym = symmetrize_3D(wedge_t)
         wedge_t = (wedge_t_sym + wedge_t)/2
@@ -218,8 +221,8 @@ class BaseTrainer:
             if vol_mask_t is not None:
                 vol_mask_set.append(vol_mask_t.cpu())
 
-        if len(vol_mask_set) == 1:
-            vol_mask_set = None
+        # if len(vol_mask_set) == 1:
+        #     vol_mask_set = None
 
         self.vol_data = MultiVolume(volume_1_set=vol_1_set,
                                     volume_2_set=vol_2_set,
@@ -231,7 +234,7 @@ class BaseTrainer:
                                     use_flips=self.configs.use_flips,
                                     n_crops=self.configs.batch_size,
                                     normalize_crops=self.configs.normalize_crops,
-                                    device=self.device)
+                                    device='cpu')
 
         # Hardcoded for now as we observe massive slowdown with other values
         self.configs.num_workers = 0

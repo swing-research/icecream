@@ -10,41 +10,30 @@ Icecream provides a theoretically grounded and computationally efficient method 
 The codebase is under active development. 
 
 ⚠️ **Important**: PyTorch 2.9 currently has a bug affecting half-precision (FP16) training. Please use PyTorch 2.8 or earlier for now. See [this issue](https://github.com/pytorch/pytorch/issues/166122).
-#### Updates 
-Date 05.11.2025
-- **Allow multiple volumes to be used for training and testing**. Specific features:
-   - Scale the total number of iterations to be independent of the number of volume.
-   - Using the command line, the option name should be repeated (icecream train --tomo1 path1/fbp1.mrc --tomo1 path2/fbp1.mrc ...).
-- Predict command allows a single tomogram as input.
-- Remove the mask argument from the predict command as it is only used for training.
-- num_workers parameters is enforced to be 0 as we observed massive slow down with larger values.
-- Save csv and png plot of the loss over iterates. You will need to install matplotlib. You can run 'pip install -e .'
-- Parameters updates:
-	- Added train_params.load_device to allow the tomograms and masks to be loaded on the GPU directly if space allows it.
-	-  Added iter_load in predict_params to choose which model to load.
-	- Added parameter save_dir_reconstructions in predict_params to save reconstructions elsewhere.
-	- Included pretrain_params into train_params.
-	- **Changed scale to eq_weight to be more explicit**.
-	- Added parameters mask_tomo_side, mask_tomo_density_perc and mask_tomo_std_perc file to generate the mask in space domain of the tomogram.
 
-Date: 23.10.2025
-- Added save_tomo_n_iterations, to compute and save the current reconstruction during training
-- Added the command line split-tilt-series to split a tilt series along the angle dimension.
-- Added comments on the parameters of the default yaml file
-- Code cleanup. 
-- Added support to use a pre-trained model as initialization during training. 
-- Added an option for torch.compile.
+### ⚠️ Version Notice
+v0.3 contained a bug that degraded reconstruction performance relative to v0.2.  
+If you downloaded the code between 05.11.2025–28.11.2025, please update to the latest version.
 
-The current version supports training on a single split of the tomograms.  
+### 📄 Changelog
+See the full list of updates in the [CHANGELOG.md](CHANGELOG.md).
 
 ## Installation
 
-Clone the repository:
+### 1. Clone the repository 
+Choose **one** of the following methods:
 
+**HTTPS (recommended):**
+```bash
+git clone https://github.com/swing-research/icecream.git
+cd icecream
+```
+**SSH (for users with SSH keys configured):**
 ```bash
 git clone git@github.com:swing-research/icecream.git
 cd icecream
 ```
+### 2. Create a Python environmnet
 
 Create a conda environment or you can use other environment managers like pipenv, poetry, uv etc with Python 3.11 or above. We will use conda
 with Python 3.11 in this example:
@@ -53,6 +42,8 @@ with Python 3.11 in this example:
 conda create -n icecream python=3.11 -y
 conda activate icecream
 ```
+### 3. Install PyTorch (CUDA-enabled)
+
 Install CUDA-enabled PyTorch from https://pytorch.org/get-started/locally/ based on your system configuration. For example, for Linux with CUDA 12.8
 
 ```bash
@@ -60,7 +51,8 @@ pip install torch==2.8.0 torchvision==0.23.0 torchaudio==2.8.0 --index-url https
 ``` 
 **Note**: PyTorch 2.9 currently has a bug affecting half-precision (FP16) training. Please use PyTorch 2.8 or earlier for now. See [this issue](https://github.com/pytorch/pytorch/issues/166122).
 
-Install Icecream and its dependencies:
+
+### 4. Install Icecream and its dependencies:
 
 ```bash
 pip install -e .
@@ -70,7 +62,7 @@ To test the installation, run:
 ```bash
 icecream --help
 ```
-It should display the two main commands: `train` and `predict`.
+It should display the three main commands: `train`, `predict`, and `split-tilt-series`.
 
 
 ### Update
@@ -104,6 +96,7 @@ icecream train \
   --angles /path/to/angles.tlt \
   --save-dir /path/to/save/dir \
   --batch-size 8
+  --device 0 	# Optional (defaults to 0)
 ```
 
 This will train the model using the two tomograms `tomogram_0.mrc` and `tomogram_1.mrc` with tilt angles specified in `angles.tlt`. The reconstructions will be saved in the directory `/path/to/save/dir` along with the 'config.json' file containing the training and model parameters. The actual model files will be saved in `/path/to/save/dir/models`. The training batch size is set to 8. You can change other training parameters like the number of epochs, eq_weight, etc. 

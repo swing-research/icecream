@@ -30,18 +30,25 @@ class EquivariantTrainer(BaseTrainer):
         self.wedge_ref_set = []
         for i in range(len(self.angle_max_set)):
             if self.load_device:
-                wedge_full = self.initialize_wedge(self.angle_max_set[i], self.angle_min_set[i], self.wedge_size)
+                wedge_full = self.initialize_wedge(self.angle_max_set[i], 
+                                                   self.angle_min_set[i], 
+                                                   self.wedge_size).to(self.device)
             else:
                 wedge_full = self.initialize_wedge(self.angle_max_set[i], self.angle_min_set[i], self.wedge_size).cpu()
             self.wedge_full_set.append(wedge_full)
             wedge_input = self.get_real_binary_filter(wedge_full[:-1, :-1, :-1])
             self.wedge_input_set.append(wedge_input)
+            wedge_ref = self.initialize_wedge(self.angle_max_set[i], 
+                                              self.angle_min_set[i], 
+                                              self.crop_size_eq,
+                                              wedge_support=self.configs.ref_wedge_support)[:-1, :-1, :-1]
+            
+            wedge_ref = self.get_real_binary_filter(wedge_ref)
+
             if self.load_device:
-                wedge_ref = self.initialize_wedge(self.angle_max_set[i], self.angle_min_set[i], self.crop_size_eq).cpu()[
-                            :-1, :-1, :-1]
+                wedge_ref = wedge_ref.to(self.device)
             else:
-                wedge_ref = self.initialize_wedge(self.angle_max_set[i], self.angle_min_set[i], self.crop_size_eq)[
-                            :-1, :-1, :-1]
+                wedge_ref = wedge_ref.cpu()
             wedge_ref = self.get_real_binary_filter(wedge_ref)
             self.wedge_ref_set.append(wedge_ref)
         self.window = self.initialize_window(self.crop_size_eq)
@@ -98,6 +105,8 @@ class EquivariantTrainer(BaseTrainer):
                                                     window=self.window))*self.configs.eq_weight
         loss = obs_loss + equi_loss_est
         equi_loss = equi_loss_est
+
+        #print(loss.item(), obs_loss.item(), equi_loss.item())
 
         with torch.no_grad():
             self.loss_set.append(loss.item())
