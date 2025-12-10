@@ -85,6 +85,8 @@ def cli_train(
                                                              help="(Optional) Run the tomogram reconstruction every N iterations. One reconstruction might take several minutes. Default is None."),
         pretrain_path: Optional[Path] = typer.Option(None,
                                                      help="(Optional) Pretrained model path (location to .pt file)."),
+        device: Optional[int] = typer.Option(None,
+                                                 help="(Optional) GPU number or device name. Only a single GPU is supported at the moment."),
 ):
     cfg = load_defaults()
     if config:
@@ -100,6 +102,7 @@ def cli_train(
     if save_dir: cli_updates["data"]["save_dir"] = str(save_dir)
 
     if batch_size is not None: cli_updates["train_params"]["batch_size"] = batch_size
+    if device is not None: cli_updates["train_params"]["device"] = device
     if crop_size is not None:
         cli_updates["train_params"]["crop_size"] = crop_size
         cli_updates["predict_params"]["stride"] = crop_size//2
@@ -167,6 +170,8 @@ def cli_predict(
         crop_size: Optional[int] = typer.Option(None,
                                                 help="(Optional) Crop size of subtomograms for prediction. Default is 72x72."),
         iter_load: int = typer.Option(-1, help="Iteration to load (default: latest in save_dir/model)"),
+        device: Optional[int] = typer.Option(None,
+                                                 help="(Optional) GPU number or device name. Only a single GPU is supported at the moment."),
         max_number_vol: int = typer.Option(1, help="maximum number of tomograms to use during training. Set to -1 to use all tomograms."),
 ):
     cfg = load_defaults()
@@ -185,6 +190,7 @@ def cli_predict(
         cli_updates["predict_params"]["save_dir_reconstructions"] = str(save_dir_reconstructions)
     if batch_size is not None:
         cli_updates["predict_params"]["batch_size"] = batch_size
+    if device is not None: cli_updates["train_params"]["device"] = device
     if crop_size is not None:
         cli_updates["train_params"]["crop_size"] = crop_size
         cli_updates["predict_params"]["stride"] = crop_size//2

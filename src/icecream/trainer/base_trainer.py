@@ -3,7 +3,6 @@ Base trainer class for training models using nois2noise type loss
 """
 
 import os
-import sys
 import csv
 import json
 
@@ -11,6 +10,8 @@ import torch
 import mrcfile
 import numpy as np
 from tqdm import tqdm
+import matplotlib
+matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 from torch.utils.data import DataLoader
 from icecream.utils.mask_util import make_mask
@@ -34,6 +35,7 @@ class BaseTrainer:
         else:
             device = str(raw_device)
         self.device = torch.device(device)
+        print(f"Using device: {self.device}")
 
         self.model = model.to(self.device)
         self.save_path = save_path

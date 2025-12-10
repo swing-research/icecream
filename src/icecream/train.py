@@ -105,6 +105,7 @@ def train_model(config_yaml):
     # Define the model and the trainer
     model = get_model(**configs.model_params)
     train_config = SimpleNamespace(**configs.train_params)
+
     trainer = EquivariantTrainer(configs=train_config,
                                  model=model,
                                  angle_max_set=angle_max_set,
