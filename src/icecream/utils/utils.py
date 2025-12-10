@@ -3,6 +3,7 @@ import torch
 import mrcfile
 import numpy as np
 from math import sqrt
+import matplotlib.pyplot as plt
 from itertools import permutations, product
 from skimage.transform import rotate as skrotate
 from scipy.spatial.transform import Rotation as R
@@ -1023,13 +1024,6 @@ def split_tilt_series(path_mrc, path_angle=None, tilt_min=None, tilt_max=None, s
             np.savetxt(os.path.join(save_dir, name_ts + "_angles1.tlt"), angles1, fmt="%.6f")
             np.savetxt(os.path.join(save_dir, name_ts + "_angles2.tlt"), angles2, fmt="%.6f")
         print("Split angle file has been saved.")
-
-# python
-import numpy as np
-import mrcfile
-import matplotlib.pyplot as plt
-path_mrc = "/Users/debarnot/Documents/Data/CryoET/Ricardo/tilt_series_4dev/Tkivui_HDCR/tomo2_L1G1/tomo2_L1G1-dose_filt-bin4-cryocare.rec"
-patch_size = 72
 
 
 def select_position_tilt_series(path_mrc, patch_size=72, save_dir=None):

@@ -132,7 +132,7 @@ class BaseTrainer:
 
     def load_data(self, vol_paths_1, vol_paths_2, vol_mask_path=None, use_mask=False,
                   mask_frac=0.3, mask_tomo_side=5, mask_tomo_density_perc=50., mask_tomo_std_perc=50.,
-                  iter = 0, max_number_vol = -1):
+                  iter = 0, max_number_vol = -1, pos=np.array([])):
         """
         Load data from the given volume paths.
         Args:
@@ -168,6 +168,14 @@ class BaseTrainer:
             raise ValueError("The number of volume paths for vol_paths_1 and vol_paths_2 must be the same.")
 
         print(f"Loading volumes. Number of volumes to be loaded: {len(self.vol_paths_1)}")
+
+        # Load validation crop if positions if provided
+        inp_1 = self.load_volume(self.vol_paths_1[-1])
+        if pos.size == 0:
+            pos = np.array([inp_1.shape[1] // 2, inp_1.shape[2] // 2])
+        self.crop_validation = inp_1[inp_1.shape[0] // 2 - self.crop_size // 2:inp_1.shape[0] // 2 + self.crop_size // 2,
+                pos[0] - self.crop_size // 2:pos[0] + self.crop_size // 2,
+                pos[1] - self.crop_size // 2:pos[1] + self.crop_size // 2].to(self.device)
 
         # Load and store all the volume in a list on the CPU. Probably sub-optimal but enough at the moment.
         vol_1_set = []
@@ -358,58 +366,51 @@ class BaseTrainer:
                         for row in zip(iter_, self.loss_avg_set, self.equi_loss_avg_set, self.obs_loss_avg_set):
                             writer.writerow(row)
 
-                    if configs.train_params.get('path_position_crop',None) is None:
-                        pos = np.array([self.vol_data.volume_1_set[0].shape[1]//2, self.vol_data.volume_1_set[0].shape[2]//2])
-                    else:
-                        pos = np.loadtxt(configs.path_position_crop)
-                    # check if pos has values
-                    if pos.size > 0:
-                        inp_1 = self.vol_data.volume_1_set[0].to(self.device)
-                        inp_1 = inp_1[inp_1.shape[0]//2-self.crop_size//2:inp_1.shape[0]//2+self.crop_size//2,pos[0]-self.crop_size//2:pos[0]+self.crop_size//2,pos[1]-self.crop_size//2:pos[1]+self.crop_size//2]
-                        self.model.eval()
-                        if self.configs.use_mixed_precision:
-                            with self.autocast:
-                                est_1 = self.model(inp_1[None, None])[0, 0]
-                            est_1 = est_1.float()
-                        else:
+                    inp_1 = self.crop_validation
+                    self.model.eval()
+                    if self.configs.use_mixed_precision:
+                        with self.autocast:
                             est_1 = self.model(inp_1[None, None])[0, 0]
-                        self.model.train()
-                        est_1_np = est_1.detach().cpu().numpy()
-                        inp_1_np = inp_1.detach().cpu().numpy()
+                        est_1 = est_1.float()
+                    else:
+                        est_1 = self.model(inp_1[None, None])[0, 0]
+                    self.model.train()
+                    est_1_np = est_1.detach().cpu().numpy()
+                    inp_1_np = inp_1.detach().cpu().numpy()
 
-                        path_save_crop = os.path.join(self.save_path,"Crops")
-                        if not os.path.exists(path_save_crop):
-                            os.makedirs(path_save_crop)
-                        plt.figure(1)
-                        plt.clf()
-                        plt.subplot(1, 2, 1)
-                        plt.imshow(inp_1_np[inp_1_np.shape[0]//2], cmap='gray')
-                        plt.title('Input 1')
-                        plt.subplot(1, 2, 2)
-                        plt.imshow(est_1_np[est_1_np.shape[0]//2], cmap='gray')
-                        plt.title('Estimate 1')
-                        plt.suptitle('XY')
-                        plt.savefig(os.path.join(path_save_crop, 'XY_iter_'+str(self.iteration).zfill(7)+'.png'), dpi=300)
-                        plt.figure(1)
-                        plt.clf()
-                        plt.subplot(1, 2, 1)
-                        plt.imshow(inp_1_np[:,inp_1_np.shape[1]//2], cmap='gray')
-                        plt.title('Input 1')
-                        plt.subplot(1, 2, 2)
-                        plt.imshow(est_1_np[:,est_1_np.shape[1]//2], cmap='gray')
-                        plt.title('Estimate 1')
-                        plt.suptitle('ZX')
-                        plt.savefig(os.path.join(path_save_crop, 'ZX_iter_'+str(self.iteration).zfill(7)+'.png'), dpi=300)
-                        plt.figure(1)
-                        plt.clf()
-                        plt.subplot(1, 2, 1)
-                        plt.imshow(inp_1_np[:,:,inp_1_np.shape[2]//2], cmap='gray')
-                        plt.title('Input 1')
-                        plt.subplot(1, 2, 2)
-                        plt.imshow(est_1_np[:,:,est_1_np.shape[2]//2], cmap='gray')
-                        plt.title('Estimate 1')
-                        plt.suptitle('ZY')
-                        plt.savefig(os.path.join(path_save_crop, 'ZY_iter_'+str(self.iteration).zfill(7)+'.png'), dpi=300)
+                    path_save_crop = os.path.join(self.save_path,"Crops")
+                    if not os.path.exists(path_save_crop):
+                        os.makedirs(path_save_crop)
+                    plt.figure(1)
+                    plt.clf()
+                    plt.subplot(1, 2, 1)
+                    plt.imshow(inp_1_np[inp_1_np.shape[0]//2], cmap='gray')
+                    plt.title('Input 1')
+                    plt.subplot(1, 2, 2)
+                    plt.imshow(est_1_np[est_1_np.shape[0]//2], cmap='gray')
+                    plt.title('Estimate 1')
+                    plt.suptitle('XY')
+                    plt.savefig(os.path.join(path_save_crop, 'XY_iter_'+str(self.iteration).zfill(7)+'.png'), dpi=300)
+                    plt.figure(1)
+                    plt.clf()
+                    plt.subplot(1, 2, 1)
+                    plt.imshow(inp_1_np[:,inp_1_np.shape[1]//2], cmap='gray')
+                    plt.title('Input 1')
+                    plt.subplot(1, 2, 2)
+                    plt.imshow(est_1_np[:,est_1_np.shape[1]//2], cmap='gray')
+                    plt.title('Estimate 1')
+                    plt.suptitle('ZX')
+                    plt.savefig(os.path.join(path_save_crop, 'ZX_iter_'+str(self.iteration).zfill(7)+'.png'), dpi=300)
+                    plt.figure(1)
+                    plt.clf()
+                    plt.subplot(1, 2, 1)
+                    plt.imshow(inp_1_np[:,:,inp_1_np.shape[2]//2], cmap='gray')
+                    plt.title('Input 1')
+                    plt.subplot(1, 2, 2)
+                    plt.imshow(est_1_np[:,:,est_1_np.shape[2]//2], cmap='gray')
+                    plt.title('Estimate 1')
+                    plt.suptitle('ZY')
+                    plt.savefig(os.path.join(path_save_crop, 'ZY_iter_'+str(self.iteration).zfill(7)+'.png'), dpi=300)
 
                 if self.iteration > len(self.vol_loader) and self.iteration % self.configs.save_n_iterations == 0:
                     self.save_model()
