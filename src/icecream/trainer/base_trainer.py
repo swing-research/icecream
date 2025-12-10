@@ -144,10 +144,6 @@ class BaseTrainer:
         self.vol_paths_2_full = vol_paths_2
         self.vol_mask_path_full = vol_mask_path
 
-        self.vol_paths_1 = vol_paths_1
-        self.vol_paths_2 = vol_paths_2
-        self.vol_mask_path = vol_mask_path
-
         self.n_volumes = len(self.vol_paths_1_full)
         if max_number_vol > 0 and self.n_volumes > max_number_vol:
             self.n_volumes = min(self.n_volumes, max_number_vol)
@@ -342,6 +338,7 @@ class BaseTrainer:
 
                     iter_ = np.arange(0, self.iteration * self.n_volumes+1, self.configs.compute_avg_loss_n_iterations)[1:]
                     iter_ = iter_[:len(self.loss_avg_set)]
+                    plt.close()
                     plt.semilogy(iter_, np.array(self.loss_avg_set), label='Average loss')
                     plt.savefig(os.path.join(self.save_path, 'losse_avg.png'), dpi=300, bbox_inches='tight')
                     plt.close()
@@ -373,7 +370,7 @@ class BaseTrainer:
                                 est_1 = self.model(inp_1[None, None])[0, 0]
                             est_1 = est_1.float()
                         else:
-                            est_1 = self.model(inp_1[:, None])[:, 0]
+                            est_1 = self.model(inp_1[None, None])[0, 0]
                         self.model.train()
                         est_1_np = est_1.detach().cpu().numpy()
                         inp_1_np = inp_1.detach().cpu().numpy()
@@ -413,7 +410,7 @@ class BaseTrainer:
                         plt.savefig(os.path.join(path_save_crop, 'ZY_iter_'+str(self.iteration).zfill(7)+'.png'), dpi=300)
 
                 if self.iteration > len(self.vol_loader) and self.iteration % self.configs.save_n_iterations == 0:
-                    self.save_model(self.iteration)
+                    self.save_model()
 
                 if self.iteration > len(self.vol_loader) and self.configs.save_tomo_n_iterations > 0 and self.iteration % self.configs.save_tomo_n_iterations == 0:
                     print("Predict tomograms with current model.")
@@ -488,20 +485,18 @@ class BaseTrainer:
         print(
             f"Average Loss: {avg_loss}, Average Diff Loss: {avg_diff_loss}, Average Obs Loss: {avg_obs_loss}, Average Equi Loss: {avg_equi_loss}")
 
-    def save_model(self, iteration=None):
+    def save_model(self):
         """
         Save the model state and loss information.
         Args:
             iteration (int): Current iteration number.
         """
-        if iteration is None:
-            iteration = self.configs.iterations
         # make sure the save path exists
         model_save_path = os.path.join(self.save_path, 'model')
         if not os.path.exists(model_save_path):
             os.makedirs(model_save_path)
         # save the model state
-        model_path = os.path.join(model_save_path, f'model_iteration_{iteration}.pt')
+        model_path = os.path.join(model_save_path, f'model_iteration_{self.iteration}.pt')
         torch.save({
             'model_state_dict': self.model.state_dict(),
             'optimizer_state_dict': self.optimizer.state_dict(),
@@ -511,7 +506,7 @@ class BaseTrainer:
             'diff_loss_avg_set': self.diff_loss_avg_set,
             'obs_loss_avg_set': self.obs_loss_avg_set,
             'equi_loss_avg_set': self.equi_loss_avg_set,
-            'iteration': iteration
+            'iteration': self.iteration
         }, model_path)
 
         # save the configs as json
@@ -525,7 +520,6 @@ class BaseTrainer:
         Load the model state from the given path.
         Args:
             model_path (str): Path to the model state file.
-            only_model: if True, only load the model weights, otherwise load optimizer and loss states too.
         """
         if not os.path.exists(model_path):
             raise FileNotFoundError(f"Model path does not exist: {model_path}")
@@ -540,7 +534,7 @@ class BaseTrainer:
         self.diff_loss_avg_set = checkpoint['diff_loss_avg_set']
         self.obs_loss_avg_set = checkpoint['obs_loss_avg_set']
         self.equi_loss_avg_set = checkpoint['equi_loss_avg_set']
-        self.iteration = 30000
+        self.iteration = checkpoint['iteration']
 
         self.move_optimizer_state_to_device(self.optimizer, self.device)
 

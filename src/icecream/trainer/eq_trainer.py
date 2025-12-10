@@ -51,7 +51,6 @@ class EquivariantTrainer(BaseTrainer):
             self.window_input = None
 
 
-
     def compute_loss(self, inp_1, inp_2, idx):
         est_1, est_2 = self.get_estimates(inp_1, inp_2)
         wedge_input = self.wedge_input_set[idx].to(self.device)

@@ -146,7 +146,7 @@ def train_model(config_yaml):
     trainer.train(iterations_tot=train_config.iterations, configs=configs)
 
     # Save the final model after full training
-    trainer.save_model(iteration=train_config.iterations)
+    trainer.save_model()
 
     # Evaluate the model and reconstruct the tomogram
     vol_est = trainer.predict_dir(**configs.predict_params)
