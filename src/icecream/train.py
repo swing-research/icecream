@@ -114,10 +114,10 @@ def train_model(config_yaml):
                                  save_path=save_path
                                  )
     print("Loading the tomograms ...")
-    if train_config.get('path_position_crop', None) is None:
+    if configs.train_params.get('path_position_crop', None) is None:
         pos = np.array([])
     else:
-        pos = np.loadtxt(configs.path_position_crop)
+        pos = np.loadtxt(configs.train_params.get('path_position_crop'))
     trainer.load_data(vol_paths_1=path_1,
                       vol_paths_2=path_2,
                       vol_mask_path=mask_path, max_number_vol=train_config.max_number_vol, pos=pos, **configs.mask_params)

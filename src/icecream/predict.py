@@ -1,6 +1,8 @@
 """Predict a reconstruction using a trained model configuration."""
 
 import os
+
+import ipdb
 import yaml
 import glob
 import typer
@@ -99,6 +101,8 @@ def predict(config_yaml):
 
     # Load model weights
     train_config = SimpleNamespace(**configs.train_params)
+
+    train_config.validation['use_validation'] = False
 
     # Define the trainer
     trainer = EquivariantTrainer(configs=train_config,

@@ -23,6 +23,7 @@ train_params:
   save_n_iterations: 5000 # Save the model weights every N iterations.
   save_tomo_n_iterations: 0 # Run the tomogram reconstruction every N iterations. One reconstruction might take several minutes and some GPU memory. Value of 0 means it doesn't run the prediction during training iterations.
   compute_avg_loss_n_iterations: 1000 # Average loss every N iterations.
+  save_crop_n_iterations: 1000 # Save crops every N iterations.
   use_flips: true # Include flip operators in the equivariance loss if true.
   normalize_crops: false # Normalize each extracted sub-tomogram before going through the network is true.
   use_inp_wedge: false # Use reconstructed wedge in the equivariance loss if false. The paper describe the case where it is false.
@@ -31,7 +32,7 @@ train_params:
   no_window: false # If true, use the full tomogram to train the model. If false, only the central part of the volume is used for training.
   view_as_real: true # Ignore imaginary part after inverse Fourier transform is true.
   upsample_volume: false # Upsample the full volume by a factor 2 if true.
-  eq_use_direct: false # If false, the rotated wedge is maksed from the loss computation.
+  eq_use_direct: false # If false, the rotated wedge is masked from the loss computation.
   min_distance: 0.5 # Minimum relative difference between rotated and unrotated missing wedge.
   window_type: "boxcar" # Shape of the crop.
   load_device: false # load all the full tomograms on the device. Will be faster but requires more memory.

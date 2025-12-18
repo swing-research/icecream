@@ -173,14 +173,16 @@ class BaseTrainer:
         print(f"Loading volumes. Number of volumes to be loaded: {len(self.vol_paths_1)}")
 
         # Load validation crop if positions if provided
-        inp_1 = self.load_volume(self.vol_paths_1[-1])
-        if pos.size == 0:
-            pos = np.array([inp_1.shape[1] // 2, inp_1.shape[2] // 2])
-        self.crop_validation = inp_1[inp_1.shape[0] // 2 - self.crop_size // 2:inp_1.shape[0] // 2 + self.crop_size // 2,
-                pos[0] - self.crop_size // 2:pos[0] + self.crop_size // 2,
-                pos[1] - self.crop_size // 2:pos[1] + self.crop_size // 2].to(self.device)
+        # check if self.crop_validation exists
+        if not hasattr(self, 'crop_validation'):
+            inp_1 = self.load_volume(self.vol_paths_1[-1])
+            if pos.size == 0:
+                pos = np.array([inp_1.shape[1] // 2, inp_1.shape[2] // 2])
+            self.crop_validation = inp_1[
+                    int(pos[0]) - self.crop_size // 2:int(pos[0]) + self.crop_size // 2,
+                    int(pos[1]) - self.crop_size // 2:int(pos[1]) + self.crop_size // 2,
+                    inp_1.shape[2] // 2 - self.crop_size // 2:inp_1.shape[2] // 2 + self.crop_size // 2].to(self.device)
 
-        # Load and store all the volume in a list on the CPU. Probably sub-optimal but enough at the moment.
         vol_1_set = []
         vol_2_set = []
         vol_mask_set = []
@@ -221,14 +223,40 @@ class BaseTrainer:
             if vol_mask_t is not None:
                 vol_mask_set.append(vol_mask_t.cpu())
 
-        # if len(vol_mask_set) == 1:
-        #     vol_mask_set = None
+        if self.configs.validation['use_validation']:
+            if self.configs.validation['y_end'] is None:
+                self.configs.validation['y_end'] = self.crop_size
+            vol_mask_set_train = []
+            vol_mask_set_val = []
+            for vol_mask in vol_mask_set:
+                vol_mask_train = torch.concatenate(
+                    (vol_mask[:, :self.configs.validation['y_start']], vol_mask[:, self.configs.validation['y_end']:]), dim=1)
+                vol_mask_test = vol_mask[:,
+                                    self.configs.validation['y_start']:self.configs.validation['y_end']]
+                vol_mask_set_train.append(vol_mask_train)
+                vol_mask_set_val.append(vol_mask_test)
+                print(f"Extracting a pixels between {self.configs.validation['y_start']} and {self.configs.validation['y_end']} along y axis for validation.")
+        else:
+            vol_mask_set_train = vol_mask_set
+            vol_mask_set_val = []
 
-        self.vol_data = MultiVolume(volume_1_set=vol_1_set,
+        # Create two maksing operators if validation is True
+        self.vol_data_train = MultiVolume(volume_1_set=vol_1_set,
                                     volume_2_set=vol_2_set,
                                     wedge_set=self.wedge_input_set,
                                     wedge_eq_set=None,
-                                    mask_set=vol_mask_set,
+                                    mask_set=vol_mask_set_train,
+                                    mask_frac=mask_frac,
+                                    crop_size=self.crop_size,
+                                    use_flips=self.configs.use_flips,
+                                    n_crops=self.configs.batch_size,
+                                    normalize_crops=self.configs.normalize_crops,
+                                    device='cpu')
+        self.vol_data_val = MultiVolume(volume_1_set=vol_1_set,
+                                    volume_2_set=vol_2_set,
+                                    wedge_set=self.wedge_input_set,
+                                    wedge_eq_set=None,
+                                    mask_set=vol_mask_set_val,
                                     mask_frac=mask_frac,
                                     crop_size=self.crop_size,
                                     use_flips=self.configs.use_flips,
@@ -239,20 +267,19 @@ class BaseTrainer:
         # Hardcoded for now as we observe massive slowdown with other values
         self.configs.num_workers = 0
 
-        if self.load_device: # then fit all on GPU and use one worker and don't pin the memory
-            self.vol_loader = DataLoader(self.vol_data,
-                                         batch_size=1,
-                                         shuffle=True,
-                                         num_workers=self.configs.num_workers,
-                                         pin_memory=False)
-        else:
-            self.vol_loader = DataLoader(self.vol_data,
-                                         batch_size=1,
-                                         shuffle=True,
-                                         num_workers=self.configs.num_workers,
-                                         pin_memory=True)
+        self.vol_loader_train = DataLoader(self.vol_data_train,
+                                     batch_size=1,
+                                     shuffle=True,
+                                     num_workers=self.configs.num_workers,
+                                     pin_memory=not (self.load_device))
 
-        self.k_sets = self.vol_data.k_sets
+        self.vol_loader_val = DataLoader(self.vol_data_val,
+                                     batch_size=1,
+                                     shuffle=True,
+                                     num_workers=self.configs.num_workers,
+                                     pin_memory=not (self.load_device))
+
+        self.k_sets = self.vol_data_train.k_sets
 
     def get_estimates(self, inp_1, inp_2):
         """
@@ -305,26 +332,25 @@ class BaseTrainer:
         # Actual training loop
         loss_val = np.nan
         ema = np.nan
+        loss_val_set = []
         while self.iteration < iterations_tot:
         # for iteration in range(iterations):
-            loss_val_set = []
+            loss_train_set = []
             # Need to update volume loader before the for loop to take into account possible changes in the volumes
-            volume_need_update = (self.iteration // self.configs.iter_update_vol) != ((self.iteration - len(self.vol_loader)) // self.configs.iter_update_vol)
+            volume_need_update = (self.iteration // self.configs.iter_update_vol) != ((self.iteration - len(self.vol_loader_train)) // self.configs.iter_update_vol)
             if self.iteration != 0 and self.configs.iter_update_vol > 0 and volume_need_update:
-                print("####################")
                 print("####################")
                 print("Updating the training volumes ...")
                 print("####################")
-                print("####################")
-                self.vol_data.volume_1_set.clear()
-                self.vol_data.volume_2_set.clear()
+                self.vol_data_train.volume_1_set.clear()
+                self.vol_data_train.volume_2_set.clear()
                 self.load_data(vol_paths_1=self.vol_paths_1_full,
                                vol_paths_2=self.vol_paths_2_full,
                                vol_mask_path=self.vol_mask_path_full,
                                max_number_vol=self.configs.max_number_vol,
                                iter=self.iteration,
                                **configs.mask_params)
-            for data in self.vol_loader:
+            for data in self.vol_loader_train:
                 self.iteration += 1
                 inp_1 = data['input_1'][0].to(self.device)
                 inp_2 = data['input_2'][0].to(self.device)
@@ -344,31 +370,58 @@ class BaseTrainer:
                 else:
                     loss.backward()
                     self.optimizer.step()
-                loss_val_set.append(float(loss.detach().item()))
+                loss_train_set.append(float(loss.detach().item()))
 
-                if self.iteration > len(self.vol_loader) and self.iteration % self.configs.compute_avg_loss_n_iterations == 0:
+                if self.iteration > 0 and self.iteration % self.configs.compute_avg_loss_n_iterations == 0:
+                    # Training loss
                     self.compute_average_loss()
+                    # Compute validation losses
+                    self.model.eval()
+                    loss_val_tmp = []
+                    for data in self.vol_loader_val:
+                        inp_1 = data['input_1'][0].to(self.device)
+                        inp_2 = data['input_2'][0].to(self.device)
+                        idx = data['idx'][0].item()
+
+                        if self.configs.use_inp_wedge:
+                            wedge = data['wedge'][0].to(self.device)
+                            inp_1 = get_measurement(inp_1, wedge)
+                            inp_2 = get_measurement(inp_2, wedge)
+
+                        # add option to avoid adding loss to list, and get the different losses here
+                        loss, obs_loss, equi_loss = self.compute_loss(inp_1, inp_2, idx, store_losses=False)
+                        loss_val_tmp.append(float(loss.detach().item()))
+                    loss_val_set.append(np.mean(loss_val_tmp))
+                    self.model.train()
 
                     iter_ = np.arange(0, self.iteration * self.n_volumes+1, self.configs.compute_avg_loss_n_iterations)[1:]
                     iter_ = iter_[:len(self.loss_avg_set)]
                     plt.close()
-                    plt.semilogy(iter_, np.array(self.loss_avg_set), label='Average loss')
-                    plt.savefig(os.path.join(self.save_path, 'losse_avg.png'), dpi=300, bbox_inches='tight')
+                    plt.semilogy(iter_, np.array(self.loss_avg_set), label='Average training loss')
+                    plt.savefig(os.path.join(self.save_path, 'loss_avg.png'), dpi=300, bbox_inches='tight')
                     plt.close()
                     plt.semilogy(iter_, np.array(self.equi_loss_avg_set), label='Equivariant loss')
-                    plt.savefig(os.path.join(self.save_path, 'losse_equi.png'), dpi=300, bbox_inches='tight')
+                    plt.savefig(os.path.join(self.save_path, 'loss_equi.png'), dpi=300, bbox_inches='tight')
                     plt.close()
                     plt.semilogy(iter_, np.array(self.obs_loss_avg_set), label='Data-fidelity loss')
-                    plt.savefig(os.path.join(self.save_path, 'losse_obs.png'), dpi=300, bbox_inches='tight')
+                    plt.savefig(os.path.join(self.save_path, 'loss_obs.png'), dpi=300, bbox_inches='tight')
+                    plt.close()
+                    iter_ = np.arange(0, self.iteration * self.n_volumes + 1,
+                                      self.configs.compute_avg_loss_n_iterations)[1:]
+                    iter_ = iter_[:len(loss_val_set)]
+                    plt.semilogy(iter_, np.array(loss_val_set), label='Validation loss')
+                    plt.savefig(os.path.join(self.save_path, 'val_loss.png'), dpi=300, bbox_inches='tight')
                     plt.close()
 
                     filename = os.path.join(self.save_path, 'losses.csv')
                     with open(filename, mode="w", newline="") as f:
                         writer = csv.writer(f)
-                        writer.writerow(["Iterations", "Avg loss", "Equivariant loss", "Data-fidelity loss"])  # header
-                        for row in zip(iter_, self.loss_avg_set, self.equi_loss_avg_set, self.obs_loss_avg_set):
+                        writer.writerow(["Iterations", "Avg loss", "Equivariant loss", "Data-fidelity loss", "Val-loss"])  # header
+                        for row in zip(iter_, self.loss_avg_set, self.equi_loss_avg_set, self.obs_loss_avg_set, loss_val_set):
                             writer.writerow(row)
+                    print("Saving losses.")
 
+                if self.iteration % self.configs.save_crop_n_iterations == 0:
                     inp_1 = self.crop_validation
                     self.model.eval()
                     if self.configs.use_mixed_precision:
@@ -415,10 +468,10 @@ class BaseTrainer:
                     plt.suptitle('ZY')
                     plt.savefig(os.path.join(path_save_crop, 'ZY_iter_'+str(self.iteration).zfill(7)+'.png'), dpi=300)
 
-                if self.iteration > len(self.vol_loader) and self.iteration % self.configs.save_n_iterations == 0:
+                if self.iteration > len(self.vol_loader_train) and self.iteration % self.configs.save_n_iterations == 0:
                     self.save_model()
 
-                if self.iteration > len(self.vol_loader) and self.configs.save_tomo_n_iterations > 0 and self.iteration % self.configs.save_tomo_n_iterations == 0:
+                if self.iteration > len(self.vol_loader_train) and self.configs.save_tomo_n_iterations > 0 and self.iteration % self.configs.save_tomo_n_iterations == 0:
                     print("Predict tomograms with current model.")
                     vol_est_list = self.predict_dir(**configs.predict_params)
                     for i in range(len(vol_est_list)):
@@ -434,13 +487,13 @@ class BaseTrainer:
                 pbar.set_postfix(iteration=self.iteration + 1, ema_loss=f"{ema:.4f}", loss=f"{loss_val:.4f}")
                 pbar.update(1)
 
-            loss_val = np.mean(loss_val_set)
+            loss_val = np.mean(loss_train_set)
             ema = loss_val if np.isnan(ema) else (alpha * loss_val + (1 - alpha) * ema)
         print("####################")
         print("  Finished training the model.")
         print("####################")
 
-    def compute_loss(self, inp_1, inp_2, idx):
+    def compute_loss(self, inp_1, inp_2, idx, store_losses=True):
         """
         Compute the loss between two inputs.
         Args:
@@ -463,10 +516,11 @@ class BaseTrainer:
                                                                criteria=self.criteria,
                                                                use_fourier=self.configs.use_fourier,
                                                                window=self.window)
-        with torch.no_grad():
-            self.loss_set.append(loss.item())
-            diff_loss = torch.mean(torch.abs(est_1 - est_2))
-            self.diff_loss_set.append(diff_loss.item())
+        if store_losses:
+            with torch.no_grad():
+                self.loss_set.append(loss.item())
+                diff_loss = torch.mean(torch.abs(est_1 - est_2))
+                self.diff_loss_set.append(diff_loss.item())
         return loss
 
 
@@ -488,8 +542,7 @@ class BaseTrainer:
         self.diff_loss_avg_set.append(avg_diff_loss)
         self.obs_loss_avg_set.append(avg_obs_loss)
         self.equi_loss_avg_set.append(avg_equi_loss)
-        print(
-            f"Average Loss: {avg_loss}, Average Diff Loss: {avg_diff_loss}, Average Obs Loss: {avg_obs_loss}, Average Equi Loss: {avg_equi_loss}")
+        print(f"\n    Averaged training losses -- total: {avg_loss}, diff: {avg_diff_loss}, obs: {avg_obs_loss}, equi: {avg_equi_loss}")
 
     def save_model(self):
         """
@@ -582,10 +635,10 @@ class BaseTrainer:
             stride = crop_size//2
 
         vol_est_list = []
-        for i in range(len(self.vol_data.volume_1_set)):
+        for i in range(len(self.vol_data_train.volume_1_set)):
             wedge_used = self.wedge_input_set[i]
             vol_est_1, _ = inference(model=self.model,
-                                     vol_input=self.vol_data.volume_1_set[i],
+                                     vol_input=self.vol_data_train.volume_1_set[i],
                                      size=crop_size,
                                      stride=stride,
                                      batch_size=batch_size,
@@ -596,9 +649,9 @@ class BaseTrainer:
                                      device=self.device,
                                      upsampled_=self.configs.upsample_volume,
                                      avg_pool=avg_pool)
-            if len(self.vol_data.volume_2_set) != 0:
+            if len(self.vol_data_train.volume_2_set) != 0:
                 vol_est_2, _ = inference(model=self.model,
-                                         vol_input=self.vol_data.volume_2_set[i],
+                                         vol_input=self.vol_data_train.volume_2_set[i],
                                          size=crop_size,
                                          stride=stride,
                                          batch_size=batch_size,

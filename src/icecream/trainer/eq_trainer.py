@@ -58,7 +58,7 @@ class EquivariantTrainer(BaseTrainer):
             self.window_input = None
 
 
-    def compute_loss(self, inp_1, inp_2, idx):
+    def compute_loss(self, inp_1, inp_2, idx, store_losses=True):
         est_1, est_2 = self.get_estimates(inp_1, inp_2)
         wedge_input = self.wedge_input_set[idx].to(self.device)
         wedge_ref = self.wedge_ref_set[idx].to(self.device)
@@ -89,7 +89,8 @@ class EquivariantTrainer(BaseTrainer):
         est_2_rot_inp = get_measurement(est_2_rot, wedge_input)
         est_1_rot_est, est_2_rot_est = self.get_estimates(est_1_rot_inp, est_2_rot_inp)
         if self.configs.eq_use_direct:
-            equi_loss_est = (self.criteria(est_2_ref, est_1_rot_est) + self.criteria(est_1_ref, est_2_rot_est))* self.configs.eq_weight
+            equi_loss_est = (self.criteria(est_2_ref, est_1_rot_est) + self.criteria(est_1_ref,
+                                                                                     est_2_rot_est)) * self.configs.eq_weight
         else:
             equi_loss_est = (fourier_loss_batch(est_2_ref,est_1_rot_est,
                             wedge_rot, 
@@ -108,11 +109,14 @@ class EquivariantTrainer(BaseTrainer):
 
         #print(loss.item(), obs_loss.item(), equi_loss.item())
 
-        with torch.no_grad():
-            self.loss_set.append(loss.item())
-            self.obs_loss_set.append(obs_loss.item())
-            self.equi_loss_set.append(equi_loss.item())
-            diff_loss = torch.mean(torch.abs(est_1 - est_2))
-            self.diff_loss_set.append(diff_loss.item())
-        return loss
+        if store_losses:
+            with torch.no_grad():
+                self.loss_set.append(loss.item())
+                self.obs_loss_set.append(obs_loss.item())
+                self.equi_loss_set.append(equi_loss.item())
+                diff_loss = torch.mean(torch.abs(est_1 - est_2))
+                self.diff_loss_set.append(diff_loss.item())
+            return loss
+        else:
+            return loss, obs_loss, equi_loss
 
