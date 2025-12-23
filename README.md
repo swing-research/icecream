@@ -20,10 +20,42 @@ See the full list of updates in the [CHANGELOG.md](CHANGELOG.md).
 
 ## Installation
 
-### 1. Clone the repository 
-Choose **one** of the following methods:
+### 1. Create a Python environmnet
 
-**HTTPS (recommended):**
+Create a conda environment or you can use other environment managers like pipenv, poetry, uv etc with Python 3.11 or above. We will use conda
+with Python 3.11 in this example:
+
+```bash
+conda create -n icecream python=3.11 -y
+conda activate icecream
+```
+### 2. Install PyTorch (CUDA-enabled)
+
+Install CUDA-enabled PyTorch from https://pytorch.org/get-started/locally/ based on your system configuration. For example, for Linux with CUDA 12.8
+
+```bash
+pip install torch==2.8.0 torchvision==0.23.0 torchaudio==2.8.0 --index-url https://download.pytorch.org/whl/cu128
+``` 
+**Note**: PyTorch 2.9 currently has a bug affecting half-precision (FP16) training. Please use PyTorch 2.8 or earlier for now. See [this issue](https://github.com/pytorch/pytorch/issues/166122).
+
+### 3. Install Icecream and its dependencies:
+
+You can install Icecream directly from the GitHub repository using pip or clone the repository and install it locally.
+#### 3.1 Direct installation (recommended):
+```bash
+pip install git+https://github.com/swing-research/icecream.git
+```
+
+To test the installation, run:
+
+```bash
+icecream --help
+```
+#### 3.2 Local installation from cloned repository:
+
+To clone the repository  Choose **one** of the following methods:
+
+**HTTPS**
 ```bash
 git clone https://github.com/swing-research/icecream.git
 cd icecream
@@ -33,27 +65,8 @@ cd icecream
 git clone git@github.com:swing-research/icecream.git
 cd icecream
 ```
-### 2. Create a Python environmnet
 
-Create a conda environment or you can use other environment managers like pipenv, poetry, uv etc with Python 3.11 or above. We will use conda
-with Python 3.11 in this example:
-
-```bash
-conda create -n icecream python=3.11 -y
-conda activate icecream
-```
-### 3. Install PyTorch (CUDA-enabled)
-
-Install CUDA-enabled PyTorch from https://pytorch.org/get-started/locally/ based on your system configuration. For example, for Linux with CUDA 12.8
-
-```bash
-pip install torch==2.8.0 torchvision==0.23.0 torchaudio==2.8.0 --index-url https://download.pytorch.org/whl/cu128
-``` 
-**Note**: PyTorch 2.9 currently has a bug affecting half-precision (FP16) training. Please use PyTorch 2.8 or earlier for now. See [this issue](https://github.com/pytorch/pytorch/issues/166122).
-
-
-### 4. Install Icecream and its dependencies:
-
+Then install the package using pip:
 ```bash
 pip install -e .
 ```
@@ -62,6 +75,8 @@ To test the installation, run:
 ```bash
 icecream --help
 ```
+
+
 It should display the three main commands: `train`, `predict`, and `split-tilt-series`.
 
 
