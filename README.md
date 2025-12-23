@@ -51,9 +51,11 @@ To test the installation, run:
 ```bash
 icecream --help
 ```
-#### 3.2 Local installation from cloned repository:
+It should display the three main commands: `train`, `predict`, and `split-tilt-series`.
 
-To clone the repository  Choose **one** of the following methods:
+#### 3.2 Local installation from cloned repository (for ones who want to modify the code):
+
+Clone the repository using **one** of the following methods:
 
 **HTTPS**
 ```bash
@@ -66,7 +68,8 @@ git clone git@github.com:swing-research/icecream.git
 cd icecream
 ```
 
-Then install the package using pip:
+Install in editable mode:
+
 ```bash
 pip install -e .
 ```
@@ -75,7 +78,6 @@ To test the installation, run:
 ```bash
 icecream --help
 ```
-
 
 It should display the three main commands: `train`, `predict`, and `split-tilt-series`.
 
