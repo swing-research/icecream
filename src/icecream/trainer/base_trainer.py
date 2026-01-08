@@ -409,8 +409,10 @@ class BaseTrainer:
             os.makedirs(model_save_path)
         # save the model state
         model_path = os.path.join(model_save_path, f'model_iteration_{iteration}.pt')
+        model_path = os.path.join(model_save_path, f'model_iteration_{iteration}.pt')
+        model_to_save = self.model.module if hasattr(self.model, "module") else self.model
         torch.save({
-            'model_state_dict': self.model.state_dict(),
+            'model_state_dict': model_to_save.state_dict(),
             'optimizer_state_dict': self.optimizer.state_dict(),
             'loss_set': self.loss_set,
             'diff_loss_set': self.diff_loss_set,

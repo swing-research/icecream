@@ -4,6 +4,7 @@ from pathlib import Path
 from typing import Optional, List, Dict, Any
 
 from .train import train_model
+from .train_ddp import train_model as train_model_ddp
 from .predict import predict
 
 from .utils.utils import split_tilt_series
@@ -81,8 +82,10 @@ def cli_train(
                                                              help="(Optional) Run the tomogram reconstruction every N iterations. One reconstruction might take several minutes. Default is None."),
         pretrain_path: Optional[Path] = typer.Option(None,
                                                      help="(Optional) Pretrained model path (location to .pt file)."),
-        device: Optional[int] = typer.Option(None,
-                                                 help="(Optional) GPU number or device name. Only a single GPU is supported at the moment."),
+        device: Optional[str] = typer.Option( None, 
+                                                   "--device", 
+                                                   "-d",
+                                                   help="List of GPUs to use, e.g. --device 0,2",),
 ):
     cfg = load_defaults()
     if config:
@@ -98,7 +101,15 @@ def cli_train(
     if save_dir: cli_updates["data"]["save_dir"] = str(save_dir)
 
     if batch_size is not None: cli_updates["train_params"]["batch_size"] = batch_size
-    if device is not None: cli_updates["train_params"]["device"] = device
+    if device is not None: 
+        # convert str list to int list if possible
+        try:
+            device = [int(d) for d in device.split(',')]
+            if len(device) == 1:
+                device = device[0]
+        except:
+            pass
+        cli_updates["train_params"]["device"] = device
     if crop_size is not None:
         cli_updates["train_params"]["crop_size"] = crop_size
         cli_updates["predict_params"]["stride"] = crop_size//2
@@ -134,7 +145,10 @@ def cli_train(
                 train_model(cfg)
         print(prof.key_averages().table(sort_by="cuda_time_total", row_limit=500))
     else:
-        train_model(cfg)
+        if isinstance(cfg["train_params"].get("device"), list) and len(cfg["train_params"]["device"]) > 1:
+            train_model_ddp(cfg)
+        else:
+            train_model(cfg)
 
 
 # ---------- subcommand: predict ----------
