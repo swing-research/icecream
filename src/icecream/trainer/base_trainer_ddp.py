@@ -337,11 +337,12 @@ class BaseTrainerDDP:
                 iteration += 1
                 inp_1 = data['input_1'][0].to(self.device)
                 inp_2 = data['input_2'][0].to(self.device)
+                #print(torch.linalg.norm(inp_1))
                 idx = data['idx'][0].item()
 
                 self.optimizer.zero_grad()
                 if self.configs.use_inp_wedge:
-                    wedge = data['wedge'][0].to(self.device)
+                    wedge = data['wedge'][0].to(self.device)    
                     inp_1 = get_measurement(inp_1, wedge)
                     inp_2 = get_measurement(inp_2, wedge)
 
@@ -354,6 +355,8 @@ class BaseTrainerDDP:
                     loss.backward()
                     self.optimizer.step()
                 loss_val_set.append(float(loss.detach().item()))
+
+                #print(f"Rank {self.rank}, Iteration {iteration+1}, Loss: {loss_val_set[-1]:.4f}")
                 if self.rank == 0:
                     if iteration > len(self.vol_loader) and iteration % self.configs.compute_avg_loss_n_iterations == 0:
                         self.compute_average_loss()
@@ -403,34 +406,34 @@ class BaseTrainerDDP:
             print("  Finished training the model.")
             print("####################")
 
-    def compute_loss(self, inp_1, inp_2, idx):
-        """
-        Compute the loss between two inputs.
-        Args:
-            inp_1 (torch.Tensor): First input tensor.
-            inp_2 (torch.Tensor): Second input tensor.
-        Returns:
-            torch.Tensor: Computed loss.
-        """
-        est_1, est_2 = self.get_estimates(inp_1, inp_2)
-        wedge_input = self.wedge_input_set[idx].to(self.device)
+    # def compute_loss(self, inp_1, inp_2, idx):
+    #     """
+    #     Compute the loss between two inputs.
+    #     Args:
+    #         inp_1 (torch.Tensor): First input tensor.
+    #         inp_2 (torch.Tensor): Second input tensor.
+    #     Returns:
+    #         torch.Tensor: Computed loss.
+    #     """
+    #     est_1, est_2 = self.get_estimates(inp_1, inp_2)
+    #     wedge_input = self.wedge_input_set[idx].to(self.device)
 
-        loss = fourier_loss(target=inp_1,
-                            estimate=est_2,
-                            wedge=wedge_input,
-                            criteria=self.criteria,
-                            use_fourier=self.configs.use_fourier,
-                            window=self.window) + fourier_loss(target=inp_2,
-                                                               estimate=est_1,
-                                                               wedge=wedge_input,
-                                                               criteria=self.criteria,
-                                                               use_fourier=self.configs.use_fourier,
-                                                               window=self.window)
-        with torch.no_grad():
-            self.loss_set.append(loss.item())
-            diff_loss = torch.mean(torch.abs(est_1 - est_2))
-            self.diff_loss_set.append(diff_loss.item())
-        return loss
+    #     loss = fourier_loss(target=inp_1,
+    #                         estimate=est_2,
+    #                         wedge=wedge_input,
+    #                         criteria=self.criteria,
+    #                         use_fourier=self.configs.use_fourier,
+    #                         window=self.window) + fourier_loss(target=inp_2,
+    #                                                            estimate=est_1,
+    #                                                            wedge=wedge_input,
+    #                                                            criteria=self.criteria,
+    #                                                            use_fourier=self.configs.use_fourier,
+    #                                                            window=self.window)
+    #     with torch.no_grad():
+    #         self.loss_set.append(loss.item())
+    #         diff_loss = torch.mean(torch.abs(est_1 - est_2))
+    #         self.diff_loss_set.append(diff_loss.item())
+    #     return loss
 
 
     def compute_average_loss(self):
@@ -468,8 +471,10 @@ class BaseTrainerDDP:
             os.makedirs(model_save_path)
         # save the model state
         model_path = os.path.join(model_save_path, f'model_iteration_{iteration}.pt')
+        model_to_save = self.model.module if hasattr(self.model, "module") else self.model
+
         torch.save({
-            'model_state_dict': self.model.state_dict(),
+            'model_state_dict': model_to_save.state_dict(),
             'optimizer_state_dict': self.optimizer.state_dict(),
             'loss_set': self.loss_set,
             'diff_loss_set': self.diff_loss_set,

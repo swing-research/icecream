@@ -17,6 +17,15 @@ from .trainer import BaseTrainerDDP
 from icecream.utils.data_util import load_data
 import torch.distributed as dist
 import torch.multiprocessing as mp
+import socket
+
+
+def find_free_port():
+    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    s.bind(("", 0))
+    port = s.getsockname()[1]
+    s.close()
+    return port
 
 def train_model(config_yaml):
     # Reproducibility
@@ -90,6 +99,9 @@ def train_model(config_yaml):
     # assert (angle_min_set < angle_max_set), "angle_min should be less than angle_max"
 
     # Define the model and the trainer
+
+
+    model = get_model(**configs.model_params)
    
     
 
@@ -108,12 +120,13 @@ def train_model(config_yaml):
 
     gpus =  train_config.device
     world_size = len(gpus)
+    free_port = find_free_port()
 
     mp.spawn(
         worker,
         args=(
-            gpus,
-            get_model(**configs.model_params),
+            gpus,free_port,
+            model,
             pretrain_params,
             train_config,
             angle_max_set,
@@ -144,7 +157,7 @@ def main(config: Optional[Path] = typer.Option(None, "--config", "-c", help="Pat
     typer.echo(config_dict)
     train_model(config_dict)
 
-def worker(rank, gpus, 
+def worker(rank, gpus, free_port,
                  model,
                  pretrain_params,
                  train_config,
@@ -167,7 +180,8 @@ def worker(rank, gpus,
     world_size = len(gpus)
 
     master_addr = "127.0.0.1"
-    master_port = "29501"  # choose a free port
+    master_port = str(free_port)  # choose a free port
+    print(f"Rank {rank} initializing process group with master address {master_addr} and port {master_port}.")
     dist.init_process_group(
         backend="nccl",
         init_method=f"tcp://{master_addr}:{master_port}",
@@ -175,62 +189,63 @@ def worker(rank, gpus,
         rank=rank,
     )
 
-    model = get_model(**configs.model_params)
-    print(f"Model initialized on rank {rank}.")
-    trainer = BaseTrainerDDP(configs=train_config,
-                             model=model,
-                             world_size = world_size,
-                             rank=rank,
-                             angle_max_set=angle_max_set,
-                             angle_min_set=angle_min_set,
-                             angles_set=None,
-                             save_path=save_path
-                             )
-    
-    print(f"Rank {rank} loading data.")
-    trainer.load_data(vol_paths_1 =vol_path_1,
-                   vol_paths_2=vol_path_2,
-                     vol_mask_path=mask_path, 
-                     vol_1_set=vol_1_set,
-                     vol_2_set=vol_2_set,
-                     vol_mask_set=vol_mask_set,
-                     mask_frac=mask_frac)
-    print(f"Rank {rank} data loaded.")
-    
-    # Possibly use pre-trained model
-    if pretrain_params is not None:
-        use_pretrain = pretrain_params.get('use_pretrain', False)
-        if use_pretrain:
-            print(f"Using pretrained model parameters on rank {rank}.")
-            model_path = pretrain_params['model_path']
-            if model_path:
-                print(f"Loading pretrained model from {model_path} on rank {rank}.")
-                trainer.load_model(model_path, pretrained=True)
-            else:
-                print(f"No pretrained model path provided on rank {rank}, training from scratch.")
+    try:
+        
+        print(f"Model initialized on rank {rank}.")
+        trainer = BaseTrainerDDP(configs=train_config,
+                                model=model,
+                                world_size = world_size,
+                                rank=rank,
+                                angle_max_set=angle_max_set,
+                                angle_min_set=angle_min_set,
+                                angles_set=None,
+                                save_path=save_path
+                                )
+        
+        print(f"Rank {rank} loading data.")
+        trainer.load_data(vol_paths_1 =vol_path_1,
+                    vol_paths_2=vol_path_2,
+                        vol_mask_path=mask_path, 
+                        vol_1_set=vol_1_set,
+                        vol_2_set=vol_2_set,
+                        vol_mask_set=vol_mask_set,
+                        mask_frac=mask_frac)
+        print(f"Rank {rank} data loaded.")
+        
+        # Possibly use pre-trained model
+        if pretrain_params is not None:
+            use_pretrain = pretrain_params.get('use_pretrain', False)
+            if use_pretrain:
+                print(f"Using pretrained model parameters on rank {rank}.")
+                model_path = pretrain_params['model_path']
+                if model_path:
+                    print(f"Loading pretrained model from {model_path} on rank {rank}.")
+                    trainer.load_model(model_path, pretrained=True)
+                else:
+                    print(f"No pretrained model path provided on rank {rank}, training from scratch.")
 
-    print(f"Rank {rank} starting training for {train_config.iterations} iterations.")
-    trainer.train(iterations=train_config.iterations, configs=train_config)
+        print(f"Rank {rank} starting training for {train_config.iterations} iterations.")
+        trainer.train(iterations=train_config.iterations, configs=train_config)
 
-    print(f"Rank {rank} finished training.")
+        print(f"Rank {rank} finished training.")
 
 
-    if rank ==0:
-        # Save the final model after full training
-        trainer.save_model(iteration=train_config.iterations)
+        if rank ==0:
+            # Save the final model after full training
+            trainer.save_model(iteration=train_config.iterations)
 
-        # Evaluate the model and reconstruct the tomogram
-        vol_est = trainer.predict_dir(**configs.predict_params)
-        for i in range(len(vol_est)):
-            # Save the estimated volume
-            name = combine_names(vol_path_1[i], vol_path_2[i])
-            vol_save_path = os.path.join(save_path, name)
-            out = mrcfile.new(vol_save_path, overwrite=True)
-            out.set_data(np.moveaxis(vol_est[i].astype(np.float32), 2, 0))
-            out.close()
-            print(f"Volume saved at: {os.path.join(save_path, name)}")
-
-    dist.destroy_process_group()     
+            # Evaluate the model and reconstruct the tomogram
+            vol_est = trainer.predict_dir(**configs.predict_params)
+            for i in range(len(vol_est)):
+                # Save the estimated volume
+                name = combine_names(vol_path_1[i], vol_path_2[i])
+                vol_save_path = os.path.join(save_path, name)
+                out = mrcfile.new(vol_save_path, overwrite=True)
+                out.set_data(np.moveaxis(vol_est[i].astype(np.float32), 2, 0))
+                out.close()
+                print(f"Volume saved at: {os.path.join(save_path, name)}")
+    finally:
+        dist.destroy_process_group()     
 
 if __name__ == '__main__':
     typer.run(main)
