@@ -105,7 +105,6 @@ def cli_train(
         # convert str list to int list if possible
         try:
             device = [int(d) for d in device.split(',')]
-                device = device[0]
         except:
             pass
         cli_updates["train_params"]["device"] = device
