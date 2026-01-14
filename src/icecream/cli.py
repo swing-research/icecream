@@ -158,11 +158,12 @@ def cli_train(
         if use_ddp is True:
             if isinstance(devices_used, int) or isinstance(devices_used, str):
                 devices_used = [devices_used]
-            train_model_ddp(cfg, devices=devices_used)
+                cfg["train_params"]["device"] = devices_used
+            train_model_ddp(cfg)
         else:
             # Check if multiple devices are given for non-DDP training
             if isinstance(devices_used, list) and len(devices_used) > 1:
-                train_model_ddp(cfg, devices=devices_used)
+                train_model_ddp(cfg)
             else:       
                 train_model(cfg)
 
