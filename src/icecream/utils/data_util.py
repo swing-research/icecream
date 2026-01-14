@@ -86,6 +86,4 @@ def load_data( vol_paths_1,
         if vol_mask_t is not None:
             vol_mask_set.append(vol_mask_t.cpu().share_memory_())
 
-    if len(vol_mask_set) == 1:
-        vol_mask_set = None
     return vol_1_set, vol_2_set, vol_mask_set,mask_frac

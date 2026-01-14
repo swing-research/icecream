@@ -82,10 +82,14 @@ def cli_train(
                                                              help="(Optional) Run the tomogram reconstruction every N iterations. One reconstruction might take several minutes. Default is None."),
         pretrain_path: Optional[Path] = typer.Option(None,
                                                      help="(Optional) Pretrained model path (location to .pt file)."),
+        use_ddp: bool = typer.Option( False,
+                                     "--ddp/--no-ddp",
+                                     help="Use Distributed Data Parallel (DDP) for multi-GPU training."),
         device: Optional[str] = typer.Option( None, 
                                                    "--device", 
                                                    "-d",
                                                    help="List of GPUs to use, e.g. --device 0,2",),
+                                        
 ):
     cfg = load_defaults()
     if config:
@@ -105,8 +109,11 @@ def cli_train(
         # convert str list to int list if possible
         try:
             device = [int(d) for d in device.split(',')]
-            if len(device) == 1:
+            if use_ddp is  False and len(device) == 1:
                 device = device[0]
+            
+            #if len(device) == 1:
+            #    device = device[0]
         except:
             pass
         cli_updates["train_params"]["device"] = device
@@ -145,11 +152,19 @@ def cli_train(
                 train_model(cfg)
         print(prof.key_averages().table(sort_by="cuda_time_total", row_limit=500))
     else:
-        if isinstance(cfg["train_params"].get("device"), list) and len(cfg["train_params"]["device"]) > 1:
-            train_model_ddp(cfg)
-        else:
-            train_model(cfg)
+        devices_used = cli_updates["train_params"]["device"]
 
+
+        if use_ddp is True:
+            if isinstance(devices_used, int) or isinstance(devices_used, str):
+                devices_used = [devices_used]
+            train_model_ddp(cfg, devices=devices_used)
+        else:
+            # Check if multiple devices are given for non-DDP training
+            if isinstance(devices_used, list) and len(devices_used) > 1:
+                train_model_ddp(cfg, devices=devices_used)
+            else:       
+                train_model(cfg)
 
 # ---------- subcommand: predict ----------
 @app.command("predict")

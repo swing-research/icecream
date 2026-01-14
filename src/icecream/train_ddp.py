@@ -2,6 +2,7 @@
 
 import os
 import json
+import traceback
 import yaml
 import torch
 import typer
@@ -18,7 +19,6 @@ from .trainer import EquivariantTrainerDDP
 import torch.distributed as dist
 import torch.multiprocessing as mp
 import socket
-
 def find_free_port():
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     s.bind(("", 0))
@@ -160,6 +160,11 @@ def worker(rank, gpus, free_port,
     torch.backends.cudnn.deterministic = True
     world_size = len(gpus)
 
+
+    device_id = train_config.device[rank]
+    torch.cuda.set_device(device_id)
+    device_id = torch.device(f"cuda:{device_id}")
+
     master_addr = "127.0.0.1"
     master_port = str(free_port)  # choose a free port
     print(f"Rank {rank} initializing process group with master address {master_addr} and port {master_port}.")
@@ -168,6 +173,7 @@ def worker(rank, gpus, free_port,
         init_method=f"tcp://{master_addr}:{master_port}",
         world_size=world_size,
         rank=rank,
+        device_id=device_id
     )
 
     try:
@@ -175,6 +181,7 @@ def worker(rank, gpus, free_port,
                                     model=model,
                                     world_size = world_size,
                                     rank=rank,
+                                    device=device_id,
                                     angle_max_set=angle_max_set,
                                     angle_min_set=angle_min_set,
                                     angles_set=None,  # Set to specific angles, for further development
@@ -221,6 +228,9 @@ def worker(rank, gpus, free_port,
                 out.close()
                 print(f"Volume saved at: {os.path.join(save_path, name)}")
     except Exception as e:
+        # print stack trace for debugging
+        
+        traceback.print_exc()
         print(f"An error occurred in rank {rank}: {e}")
     finally:
         dist.destroy_process_group()

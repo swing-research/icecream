@@ -24,6 +24,7 @@ class EquivariantTrainerDDP(EquivariantTrainer):
                  model,
                  world_size,
                  rank,
+                 device,
                  angle_max_set=[60],
                  angle_min_set=[-60],
                  angles_set = None,
@@ -32,17 +33,11 @@ class EquivariantTrainerDDP(EquivariantTrainer):
 
         self.world_size = world_size
         self.rank = rank
-        raw_device = configs.device[self.rank]
-        if isinstance(raw_device, int):
-            device = "cpu" if raw_device == -1 else f"cuda:{raw_device}"
-        else:
-            device = str(raw_device)
-        self.device = torch.device(device)
-        print(f"Using device: {self.device}")
-
+        self.device = device
         self.model = model.to(self.device)
         self.model= torch.nn.parallel.DistributedDataParallel(self.model, 
-                                                              device_ids=[self.device])
+                                                              device_ids=[configs.device[self.rank]])
+        
         self.save_path = save_path
 
         print(f"Trainer initialized on rank {self.rank} with device {self.device}.")
@@ -100,12 +95,12 @@ class EquivariantTrainerDDP(EquivariantTrainer):
                                     use_flips=self.configs.use_flips,
                                     n_crops=self.configs.batch_size,
                                     normalize_crops=self.configs.normalize_crops,
-                                    device=self.device)
+                                    device='cpu')
 
         # Hardcoded for now as we observe massive slowdown with other values
         self.configs.num_workers = 0
 
-        sampler = torch.utils.data.DistributedSampler(
+        self.sampler = torch.utils.data.DistributedSampler(
                 self.vol_data,
                 num_replicas=self.world_size,
                 rank=self.rank,
@@ -116,13 +111,13 @@ class EquivariantTrainerDDP(EquivariantTrainer):
         if self.load_device: # then fit all on GPU and use one worker and don't pin the memory
             self.vol_loader = DataLoader(self.vol_data,
                                          batch_size=1,
-                                         sampler=sampler,
+                                         sampler=self.sampler,
                                          num_workers=0,
                                          pin_memory=False)
         else:
             self.vol_loader = DataLoader(self.vol_data,
                                          batch_size=1,
-                                         sampler=sampler,
+                                         sampler=self.sampler,
                                          num_workers=self.configs.num_workers,
                                          pin_memory=True)
 
@@ -166,6 +161,7 @@ class EquivariantTrainerDDP(EquivariantTrainer):
         while iteration < self.configs.iterations:
         # for iteration in range(iterations):
             loss_val_set = []
+            self.sampler.set_epoch(iteration)
             for data in self.vol_loader:
                 iteration += 1
                 inp_1 = data['input_1'][0].to(self.device)
