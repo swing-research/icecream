@@ -40,7 +40,7 @@ class MultiVolume(Dataset):
         if k_sets is not None:
             self.k_sets = k_sets
         else:
-            print("Generating rotation indeces")
+            print("Generating rotation indices")
             self.generate_rotation_indeces()
 
 
