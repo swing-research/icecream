@@ -16,6 +16,7 @@ class MultiVolume(Dataset):
                  n_crops = 2,
                  normalize_crops = False,
                  window_type = 'boxcar',
+                 k_sets = None,
                  device = 'cpu'):
         """
         Structure to keep track of all useful information regarding the tomograms.
@@ -36,7 +37,12 @@ class MultiVolume(Dataset):
                                    dtype=torch.float32, 
                                    device=self.device)[None]
 
-        self.generate_rotation_indeces()
+        if k_sets is not None:
+            self.k_sets = k_sets
+        else:
+            print("Generating rotation indeces")
+            self.generate_rotation_indeces()
+
 
     def generate_rotation_indeces(self):
         """

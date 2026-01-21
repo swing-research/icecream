@@ -69,7 +69,8 @@ class EquivariantTrainerDDP(EquivariantTrainer):
                      vol_1_set=[],
                      vol_2_set=[],
                      vol_mask_set=[],
-                     mask_frac=0.3,):
+                     mask_frac=0.3,
+                     k_sets=None):
         """
         Load data from the given volume paths.
         Args:
@@ -95,6 +96,7 @@ class EquivariantTrainerDDP(EquivariantTrainer):
                                     use_flips=self.configs.use_flips,
                                     n_crops=self.configs.batch_size,
                                     normalize_crops=self.configs.normalize_crops,
+                                    k_sets = k_sets,
                                     device='cpu')
 
         # Hardcoded for now as we observe massive slowdown with other values
@@ -120,7 +122,8 @@ class EquivariantTrainerDDP(EquivariantTrainer):
                                          sampler=self.sampler,
                                          num_workers=self.configs.num_workers,
                                          pin_memory=True)
-
+        #print("K sets:")
+        #print(self.vol_data.k_sets)
         self.k_sets = self.vol_data.k_sets
 
 

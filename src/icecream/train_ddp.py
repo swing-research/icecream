@@ -13,7 +13,7 @@ from typing import Optional
 from types import SimpleNamespace
 
 from .models import get_model
-from .utils.utils import combine_names
+from .utils.utils import combine_names,get_wedge_3d_new,generate_all_cube_symmetries_torch,symmetrize_3D
 from .utils.data_util import load_data
 from .trainer import EquivariantTrainerDDP
 import torch.distributed as dist
@@ -89,6 +89,26 @@ def train_model(config_yaml):
         angle_max_set = [data_config.tilt_max]*len(path_1)
     # assert (angle_min_set < angle_max_set), "angle_min should be less than angle_max"
 
+
+    #  Generating ksets 
+    print("Generating k-sets for rotations")
+    crop_size = configs.train_params['crop_size']
+
+    wedge,ball = get_wedge_3d_new(crop_size,
+                                  max_angle = angle_max_set[0],
+                                  min_angle = angle_min_set[0],
+                                  rotation = 0,
+                                  low_support=configs.train_params.get('wedge_low_support', None),
+                                  use_spherical_support=configs.train_params.get('use_spherical_support', False))
+    wedge_t = torch.tensor(wedge, dtype=torch.float32)
+    wedge_t_sym = symmetrize_3D(wedge_t)
+    wedge_t = (wedge_t_sym + wedge_t)/2
+    wedge_t[wedge_t>0.1]  = 1
+    
+    random_cube = torch.rand(crop_size,crop_size,crop_size)
+    _, _, k_sets, _ = generate_all_cube_symmetries_torch(random_cube,wedge_t,use_flips = 
+                                                          configs.train_params['use_flips'])
+
     # Define the model and the trainer
     model = get_model(**configs.model_params)
     train_config = SimpleNamespace(**configs.train_params)
@@ -131,7 +151,8 @@ def train_model(config_yaml):
             path_2,
             mask_path,
             mask_frac,
-            vol_mask_set
+            vol_mask_set,
+            k_sets
         ),
         nprocs=world_size,
         join=True
@@ -152,7 +173,8 @@ def worker(rank, gpus, free_port,
                  vol_path_2,
                  mask_path,
                  mask_frac,
-                 vol_mask_set):
+                 vol_mask_set,
+                 k_sets):
     """Function to be run on each GPU for distributed training."""
     seed = train_config.seed
     torch.manual_seed(seed+rank)
@@ -194,7 +216,8 @@ def worker(rank, gpus, free_port,
                         vol_1_set=vol_1_set,
                         vol_2_set=vol_2_set,
                         vol_mask_set=vol_mask_set,
-                        mask_frac=mask_frac)
+                        mask_frac=mask_frac,
+                        k_sets = k_sets,)
         print(f"Rank {rank} data loaded.")
 
         # Possibly use pre-trained model
