@@ -3,13 +3,9 @@
 import os
 import json
 import traceback
-import yaml
 import torch
-import typer
 import mrcfile
 import numpy as np
-from pathlib import Path
-from typing import Optional
 from types import SimpleNamespace
 
 from .models import get_model
@@ -19,6 +15,8 @@ from .trainer import EquivariantTrainerDDP
 import torch.distributed as dist
 import torch.multiprocessing as mp
 import socket
+
+
 def find_free_port():
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     s.bind(("", 0))
@@ -26,9 +24,43 @@ def find_free_port():
     s.close()
     return port
 
+def available_cpus() -> int:
+    # Most reliable on Linux under Slurm cgroups:
+    try:
+        return len(os.sched_getaffinity(0))
+    except Exception:
+        pass
+    # Slurm fallback:
+    v = os.environ.get("SLURM_CPUS_PER_TASK")
+    if v:
+        return int(v)
+    # Generic fallback:
+    return os.cpu_count() or 1
+
+def configure_threads(world_size: int, reserve: int = 0,override: bool = False):
+    cpus = available_cpus()
+    usable = max(1, cpus - reserve)           # optionally reserve some CPUs for OS/I/O
+    tpr = max(1, usable // world_size)        # threads per rank
+
+    def set_env(name: str, value: int):
+        if override or name not in os.environ:
+            os.environ[name] = str(value)
+
+    set_env("OMP_NUM_THREADS", tpr)
+    set_env("MKL_NUM_THREADS", tpr)
+    set_env("OPENBLAS_NUM_THREADS", tpr)
+    set_env("NUMEXPR_NUM_THREADS", tpr)
+    set_env("PYTHONUNBUFFERED", 1)
+
+    return cpus, tpr
+
 
 def train_model(config_yaml):
     print("Running distributed training with DDP...")
+
+    num_cpus = available_cpus()
+    print(f"Available CPUs: {num_cpus}")
+
     # Reproducibility
     seed = config_yaml.get('train_params', {}).get('seed', 42)
     torch.manual_seed(seed)
@@ -127,11 +159,17 @@ def train_model(config_yaml):
                                                      load_device=train_config.load_device,
                                                     device='cpu', **configs.mask_params)
 
-    mp.set_start_method("spawn", force=True)
-
 
     gpus =  train_config.device
     world_size = len(gpus)
+
+    cpus, threads_per_rank = configure_threads(world_size)
+    print(f"allowed cpus={cpus}, world_size={world_size}, threads/rank={threads_per_rank}", flush=True)
+
+    mp.set_start_method("spawn", force=True)
+
+
+
     free_port = find_free_port()
 
     mp.spawn(
@@ -152,6 +190,7 @@ def train_model(config_yaml):
             mask_path,
             mask_frac,
             vol_mask_set,
+            threads_per_rank,
             k_sets
         ),
         nprocs=world_size,
@@ -174,12 +213,15 @@ def worker(rank, gpus, free_port,
                  mask_path,
                  mask_frac,
                  vol_mask_set,
+                 threads_per_rank,
                  k_sets):
     """Function to be run on each GPU for distributed training."""
     seed = train_config.seed
     torch.manual_seed(seed+rank)
     np.random.seed(seed+rank)
     torch.backends.cudnn.deterministic = True
+    torch.set_num_threads(threads_per_rank)
+
     world_size = len(gpus)
 
 
