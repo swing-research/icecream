@@ -62,7 +62,8 @@ def load_data( vol_paths_1,
 
         if vol_mask_path is not None:
             print(f"Loading tomogram mask: \n {vol_mask_path[i]}")
-            vol_mask = mrcfile.open(vol_mask_path[i]).data
+            with mrcfile.open(vol_mask_path[i]) as mrc:
+                vol_mask = mrc.data.copy()
             vol_mask = np.moveaxis(vol_mask, 0, 2).astype(np.float32)
             vol_mask_t = torch.tensor(vol_mask, dtype=torch.float32, device='cpu')
         else:

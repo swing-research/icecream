@@ -71,7 +71,7 @@ def test_default_training(tmp_path: Path):
         "--iterations", "100",
     ]
 
-    p = subprocess.run(cmd,text=True)
+    p = subprocess.run(cmd, text=True, capture_output=True)
     assert p.returncode == 0, f"STDOUT:\n{p.stdout}\nSTDERR:\n{p.stderr}"
 
     assert_outputs_base(Path(save_dir))
