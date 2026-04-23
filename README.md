@@ -116,8 +116,34 @@ icecream train \
   --device 0 	# Optional (defaults to 0)
 ```
 
-This will train the model using the two tomograms `tomogram_0.mrc` and `tomogram_1.mrc` with tilt angles specified in `angles.tlt`. The reconstructions will be saved in the directory `/path/to/save/dir` along with the 'config.json' file containing the training and model parameters. The actual model files will be saved in `/path/to/save/dir/models`. The training batch size is set to 8. You can change other training parameters like the number of epochs, eq_weight, etc. 
+This will train the model using the two tomograms `tomogram_0.mrc` and `tomogram_1.mrc` with tilt angles specified in `angles.tlt`. The reconstructions will be saved in the directory `/path/to/save/dir` along with the 'config.json' file containing the training and model parameters. The actual model files will be saved in `/path/to/save/dir/models`. The training batch size is set to 8. You can change other training parameters like the number of epochs, eq_weight, etc.
 
+
+### Multi-GPU training and optimization
+The above example runs on a single GPU. To train on multiple GPUs, you can specify multiple device IDs with the `--device` argument. Icecream will automatically launch distributed training internally (DDP-style), so no additional launch commands (e.g., `torchrun`) are required.
+
+```bash
+icecream train \
+  --tomo0 /path/to/tomogram_0.mrc \
+  --tomo1 /path/to/tomogram_1.mrc \
+  --angles /path/to/angles.tlt \
+  --save-dir /path/to/save/dir \
+  --batch-size 8
+  --device 0,1 
+  --iterations 25000
+```
+**Important notes:**
+- `batch-size` is defined per GPU, so you do not need to increase it when using multiple GPUs.
+- The effective batch size scales with the number of GPUs.
+- To obtain results comparable to single-GPU training, we recommend reducing the number of iterations accordingly (e.g., from 50,000 to 25,000 when using 2 GPUs).
+- In the example above, each GPU processes 8 sub-tomograms per iteration.
+- Icecream handles process spawning and DDP initialization internally.
+
+**Cluster / Slurm users:**
+- Make sure to allocate sufficient CPU resources as you increase the number of GPUs.
+- We recommend allocating ~8 CPU threads per GPU to avoid data-loading bottlenecks.
+
+All commands and options described further can be used with multi-GPU training unless stated otherwise.
 
 ### Using a pre-trained model for initialization
 You can optionally initialize the weights of the model using a pre-trained model. This can help in faster convergence. To do this, use the `--pretrain-path` option to specify the path to the pre-trained model file (.pt file). Note that the pre-trained model should be compatible with the current model architecture.
