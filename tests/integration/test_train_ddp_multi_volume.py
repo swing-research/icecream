@@ -45,8 +45,8 @@ def generate_random_data(tmp_path: Path):
         small_data[64:-64, 32:-32, 32:-32] = 1.0  # simple cubic mask
         mrc.set_data(small_data)
 
-    anlges_array = np.linspace(-60, 57.1, num=120).astype(np.float32)
-    np.savetxt(angles01, anlges_array, fmt='%.4f')
+    angles_array = np.linspace(-60, 57.1, num=120).astype(np.float32)
+    np.savetxt(angles01, angles_array, fmt='%.4f')
 
 
     with mrcfile.new(tomo2, overwrite=True) as mrc:
@@ -62,8 +62,8 @@ def generate_random_data(tmp_path: Path):
         small_data[64:-64, 32:-32, 32:-32] = 1.0  # simple cubic mask
         mrc.set_data(small_data)
 
-    anlges_array = np.linspace(-60, 57.1, num=120).astype(np.float32)
-    np.savetxt(angles23, anlges_array, fmt='%.4f')
+    angles_array = np.linspace(-60, 57.1, num=120).astype(np.float32)
+    np.savetxt(angles23, angles_array, fmt='%.4f')
 
     return tomo0, tomo1, angles01, mask01, tomo2, tomo3, angles23, mask23
 
@@ -229,4 +229,3 @@ def assert_outputs_base(save_dir: Path):
     
 
     
-
