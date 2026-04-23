@@ -31,8 +31,8 @@ def generate_random_data(tmp_path: Path):
         small_data[64:-64, 32:-32, 32:-32] = 1.0  # simple cubic mask
         mrc.set_data(small_data)
 
-    anlges_array = np.linspace(-60, 57.1, num=120).astype(np.float32)
-    np.savetxt(angles, anlges_array, fmt='%.4f')
+    angles_array = np.linspace(-60, 57.1, num=120).astype(np.float32)
+    np.savetxt(angles, angles_array, fmt='%.4f')
 
     return tomo0, tomo1, angles, mask
 
