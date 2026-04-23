@@ -13,7 +13,8 @@ def load_volume(vol_path):
     Returns:
         torch.Tensor: Loaded volume as a tensor.
     """
-    vol = mrcfile.open(vol_path).data
+    with mrcfile.open(vol_path) as mrc:
+        vol = mrc.data.copy()
     vol = np.moveaxis(vol, 0, 2).astype(np.float32)
     vol_t = torch.tensor(vol, dtype=torch.float32, device='cpu')
     return normalize_volume(vol_t)
