@@ -4,7 +4,10 @@ All notable changes to this project will be documented in this file.
 The format is based on Keep a Changelog (https://keepachangelog.com)
 and uses categories like Added, Changed, Fixed, Removed.
 
-
+## [v0.4] - 23.04.2026
+### Added
+ - Support for multi-GPU training, which internally uses `torch.nn.DataParallel` to distribute the training across multiple GPUs.
+ - Integration tests for training commands. 
 
 ## [v0.3] - 05.11.2025
 ### Added
