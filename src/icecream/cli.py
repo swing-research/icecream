@@ -4,6 +4,7 @@ from pathlib import Path
 from typing import Optional, List, Dict, Any
 
 from .train import train_model
+from .train_ddp import train_model as train_model_ddp
 from .predict import predict
 
 from .utils.utils import split_tilt_series
@@ -81,8 +82,14 @@ def cli_train(
                                                              help="(Optional) Run the tomogram reconstruction every N iterations. One reconstruction might take several minutes. Default is None."),
         pretrain_path: Optional[Path] = typer.Option(None,
                                                      help="(Optional) Pretrained model path (location to .pt file)."),
-        device: Optional[int] = typer.Option(None,
-                                                 help="(Optional) GPU number or device name. Only a single GPU is supported at the moment."),
+        use_ddp: bool = typer.Option( False,
+                                     "--ddp/--no-ddp",
+                                     help="Use Distributed Data Parallel (DDP) for multi-GPU training."),
+        device: Optional[str] = typer.Option( None, 
+                                                   "--device", 
+                                                   "-d",
+                                                   help="List of GPUs to use, e.g. --device 0,2",),
+                                        
 ):
     cfg = load_defaults()
     if config:
@@ -98,7 +105,20 @@ def cli_train(
     if save_dir: cli_updates["data"]["save_dir"] = str(save_dir)
 
     if batch_size is not None: cli_updates["train_params"]["batch_size"] = batch_size
-    if device is not None: cli_updates["train_params"]["device"] = device
+    if device is not None:
+        parsed_device = device
+        try:
+            parsed_device = [int(d.strip()) for d in device.split(',') if d.strip()]
+            if not parsed_device:
+                raise ValueError("empty device list")
+            if use_ddp is False and len(parsed_device) == 1:
+                parsed_device = parsed_device[0]
+        except ValueError:
+            if use_ddp:
+                raise typer.BadParameter(
+                    "When --ddp is enabled, --device must be a non-empty comma-separated list of GPU indices, e.g. '0' or '0,1'."
+                )
+        cli_updates["train_params"]["device"] = parsed_device
     if crop_size is not None:
         cli_updates["train_params"]["crop_size"] = crop_size
         cli_updates["predict_params"]["stride"] = crop_size//2
@@ -134,8 +154,20 @@ def cli_train(
                 train_model(cfg)
         print(prof.key_averages().table(sort_by="cuda_time_total", row_limit=500))
     else:
-        train_model(cfg)
+        devices_used = cli_updates["train_params"]["device"]
 
+
+        if use_ddp is True:
+            if isinstance(devices_used, int) or isinstance(devices_used, str):
+                devices_used = [devices_used]
+                cfg["train_params"]["device"] = devices_used
+            train_model_ddp(cfg)
+        else:
+            # Check if multiple devices are given for non-DDP training
+            if isinstance(devices_used, list) and len(devices_used) > 1:
+                train_model_ddp(cfg)
+            else:       
+                train_model(cfg)
 
 # ---------- subcommand: predict ----------
 @app.command("predict")
