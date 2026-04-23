@@ -112,7 +112,7 @@ icecream train \
   --tomo1 /path/to/tomogram_1.mrc \
   --angles /path/to/angles.tlt \
   --save-dir /path/to/save/dir \
-  --batch-size 8
+  --batch-size 8 \
   --device 0 	# Optional (defaults to 0)
 ```
 
@@ -128,7 +128,7 @@ icecream train \
   --tomo1 /path/to/tomogram_1.mrc \
   --angles /path/to/angles.tlt \
   --save-dir /path/to/save/dir \
-  --batch-size 8
+  --batch-size 8 \
   --device 0,1 
   --iterations 25000
 ```
