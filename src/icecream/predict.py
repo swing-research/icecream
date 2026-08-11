@@ -3,14 +3,13 @@
 import os
 import yaml
 import typer
-import mrcfile
 import numpy as np
 from pathlib import Path
 from typing import Optional
 from types import SimpleNamespace
 
 from .models import get_model
-from .utils.utils import combine_names
+from .utils.utils import combine_names, get_voxel_size, save_mrc
 from .trainer import EquivariantTrainer
 
 def get_latest_iteration(model_path):
@@ -125,9 +124,9 @@ def predict(config_yaml):
             name = combine_names(path_1[i], '')
         vol_save_path = os.path.join(save_dir_reconstructions, name)
         print("Saving at ",vol_save_path)
-        out = mrcfile.new(vol_save_path,overwrite=True)
-        out.set_data(np.moveaxis(vol_est_list[i].astype(np.float32),2,0))
-        out.close()
+        save_mrc(vol_save_path,
+                 np.moveaxis(vol_est_list[i], 2, 0),
+                 voxel_size=get_voxel_size(path_1[i]))
 
 def main(
     config: Optional[Path] = typer.Option(None, "--config", "-c", help="Path to YAML config file"),

@@ -958,6 +958,43 @@ def combine_names(vol_1, vol_2):
     return combined_name + '.mrc'
 
 
+def get_voxel_size(vol_path):
+    """
+    Read the voxel size from an MRC header.
+
+    Args:
+        vol_path (str): Path to the volume file.
+    Returns:
+        The (x, y, z) voxel size record, or None if the header does not define one.
+    """
+    with mrcfile.open(vol_path, permissive=True, header_only=True) as mrc:
+        voxel_size = mrc.voxel_size.copy()
+
+    if voxel_size.x == 0:
+        return None
+
+    return voxel_size
+
+
+def save_mrc(save_path, data, voxel_size=None, overwrite=True):
+    """
+    Write a volume to an MRC file, propagating the voxel size into the header.
+
+    Args:
+        save_path (str): Path to write the volume to.
+        data (numpy.ndarray): Volume data, in (z, y, x) order.
+        voxel_size: Voxel size to write, as returned by get_voxel_size. If None,
+            the header is left without a voxel size.
+        overwrite (bool): Whether to overwrite an existing file.
+    """
+    with mrcfile.new(save_path, overwrite=overwrite) as out:
+        out.set_data(data.astype(np.float32))
+        # Must come after set_data, which rewrites mx/my/mz. The voxel size is
+        # derived from those, so setting it earlier is silently discarded.
+        if voxel_size is not None:
+            out.voxel_size = voxel_size
+
+
 def split_tilt_series(path_mrc, path_angle=None, tilt_min=None, tilt_max=None, save_dir=None):
     """
     Split a given tilt series into two by splitting the angles in two sets.

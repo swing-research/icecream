@@ -3,13 +3,12 @@ Class to train the model using the standard equivariant loss function with  with
 """
 import os
 import numpy as np
-import mrcfile
 import torch
 import matplotlib.pyplot as plt
 import matplotlib
 matplotlib.use('Agg')
 from .eq_trainer import EquivariantTrainer
-from icecream.utils.utils import batch_rot_4vol, batch_rot_wedge_full_4vols,crop_vol,fourier_loss, fourier_loss_batch,get_measurement,get_measurement_multi_wedge
+from icecream.utils.utils import batch_rot_4vol, batch_rot_wedge_full_4vols,crop_vol,fourier_loss, fourier_loss_batch,get_measurement,get_measurement_multi_wedge,get_voxel_size,save_mrc
 from torch.utils.data import DataLoader
 from icecream.dataset.multi_volumes import MultiVolume
 from tqdm import tqdm
@@ -224,9 +223,9 @@ class EquivariantTrainerDDP(EquivariantTrainer):
                             name_2 = self.vol_paths_2[i].split('/')[-1].split('.mrc')[0]
                             vol_est_name = 'latest_prediction_' + name_1 +'_'+ name_2 + '.mrc'
                             vol_save_path = os.path.join(self.save_path, vol_est_name)
-                            out = mrcfile.new(vol_save_path, overwrite=True)
-                            out.set_data(np.moveaxis(vol_est_list[i].astype(np.float32), 2, 0))
-                            out.close()
+                            save_mrc(vol_save_path,
+                                     np.moveaxis(vol_est_list[i], 2, 0),
+                                     voxel_size=get_voxel_size(self.vol_paths_1[i]))
                 if self.rank == 0:
                     pbar.set_postfix(iteration=iteration + 1, ema_loss=f"{ema:.4f}", loss=f"{loss_val:.4f}")
                     pbar.update(1)

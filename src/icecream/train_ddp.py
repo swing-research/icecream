@@ -4,12 +4,11 @@ import os
 import json
 import traceback
 import torch
-import mrcfile
 import numpy as np
 from types import SimpleNamespace
 
 from .models import get_model
-from .utils.utils import combine_names,get_wedge_3d_new,generate_all_cube_symmetries_torch,symmetrize_3D
+from .utils.utils import combine_names,get_wedge_3d_new,generate_all_cube_symmetries_torch,symmetrize_3D,get_voxel_size,save_mrc
 from .utils.data_util import load_data
 from .trainer import EquivariantTrainerDDP
 import torch.distributed as dist
@@ -288,9 +287,9 @@ def worker(rank, gpus, free_port,
                 # Save the estimated volume
                 name = combine_names(vol_path_1[i], vol_path_2[i])
                 vol_save_path = os.path.join(save_path, name)
-                out = mrcfile.new(vol_save_path, overwrite=True)
-                out.set_data(np.moveaxis(vol_est[i].astype(np.float32), 2, 0))
-                out.close()
+                save_mrc(vol_save_path,
+                         np.moveaxis(vol_est[i], 2, 0),
+                         voxel_size=get_voxel_size(vol_path_1[i]))
                 print(f"Volume saved at: {os.path.join(save_path, name)}")
     except Exception as e:
         # print stack trace for debugging

@@ -17,7 +17,7 @@ from torch.utils.data import DataLoader
 from icecream.utils.mask_util import make_mask
 from icecream.dataset.multi_volumes import MultiVolume
 from icecream.utils.inference_util import inference
-from icecream.utils.utils import get_wedge_3d_new, symmetrize_3D, get_measurement, fourier_loss
+from icecream.utils.utils import get_wedge_3d_new, symmetrize_3D, get_measurement, fourier_loss, get_voxel_size, save_mrc
 
 class BaseTrainer:
     def __init__(self,
@@ -331,9 +331,9 @@ class BaseTrainer:
                         name_2 = self.vol_paths_2[i].split('/')[-1].split('.mrc')[0]
                         vol_est_name = 'latest_prediction_' + name_1 +'_'+ name_2 + '.mrc'
                         vol_save_path = os.path.join(self.save_path, vol_est_name)
-                        out = mrcfile.new(vol_save_path, overwrite=True)
-                        out.set_data(np.moveaxis(vol_est_list[i].astype(np.float32), 2, 0))
-                        out.close()
+                        save_mrc(vol_save_path,
+                                 np.moveaxis(vol_est_list[i], 2, 0),
+                                 voxel_size=get_voxel_size(self.vol_paths_1[i]))
 
                 pbar.set_postfix(iteration=iteration + 1, ema_loss=f"{ema:.4f}", loss=f"{loss_val:.4f}")
                 pbar.update(1)

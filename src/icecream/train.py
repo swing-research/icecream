@@ -5,14 +5,13 @@ import json
 import yaml
 import torch
 import typer
-import mrcfile
 import numpy as np
 from pathlib import Path
 from typing import Optional
 from types import SimpleNamespace
 
 from .models import get_model
-from .utils.utils import combine_names
+from .utils.utils import combine_names, get_voxel_size, save_mrc
 from .trainer import EquivariantTrainer
 
 def train_model(config_yaml):
@@ -126,9 +125,9 @@ def train_model(config_yaml):
         # Save the estimated volume
         name = combine_names(path_1[i], path_2[i])
         vol_save_path = os.path.join(save_path, name)
-        out = mrcfile.new(vol_save_path, overwrite=True)
-        out.set_data(np.moveaxis(vol_est[i].astype(np.float32), 2, 0))
-        out.close()
+        save_mrc(vol_save_path,
+                 np.moveaxis(vol_est[i], 2, 0),
+                 voxel_size=get_voxel_size(path_1[i]))
         print(f"Volume saved at: {os.path.join(save_path, name)}")
 
 def main(config: Optional[Path] = typer.Option(None, "--config", "-c", help="Path to YAML config file")):
