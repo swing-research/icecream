@@ -1,0 +1,54 @@
+cff-version: 1.2.0
+message: "If you use ICECREAM, please cite the paper below."
+title: "ICECREAM"
+abstract: "Self-supervised framework for cryo-ET reconstruction that jointly performs denoising and missing-wedge correction using equivariant imaging."
+type: software
+license: MIT
+repository-code: "https://github.com/swing-research/icecream"
+version: 0.4.0
+date-released: 2026-08-27
+keywords:
+  - cryo-electron tomography
+  - missing wedge
+  - denoising
+  - self-supervised learning
+  - equivariant imaging
+authors:
+  - family-names: "Kishore"
+    given-names: "Vinith"
+    orcid: "https://orcid.org/0009-0007-8576-5086"
+  - family-names: "Debarnot"
+    given-names: "Valentin"
+    orcid: "https://orcid.org/0000-0002-3985-0024"
+  - family-names: "Righetto"
+    given-names: "Ricardo D."
+    orcid: "https://orcid.org/0000-0003-4247-4303"
+  - family-names: "Engel"
+    given-names: "Benjamin D."
+    orcid: "https://orcid.org/0000-0002-0941-4387"
+  - family-names: "Dokmanić"
+    given-names: "Ivan"
+    orcid: "https://orcid.org/0000-0001-7132-5214"
+preferred-citation:
+  type: article
+  title: "ICECREAM: high-fidelity equivariant cryo-electron tomography"
+  journal: "Acta Crystallographica Section D: Structural Biology"
+  year: 2026
+  month: 4
+  volume: 82
+  issue: 4
+  start: 295
+  end: 313
+  doi: "10.1107/S2059798326001622"
+  issn: "2059-7983"
+  authors:
+    - family-names: "Kishore"
+      given-names: "Vinith"
+    - family-names: "Debarnot"
+      given-names: "Valentin"
+    - family-names: "Righetto"
+      given-names: "Ricardo D."
+    - family-names: "Engel"
+      given-names: "Benjamin D."
+    - family-names: "Dokmanić"
+      given-names: "Ivan"
