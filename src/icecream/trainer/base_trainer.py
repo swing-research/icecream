@@ -233,21 +233,15 @@ class BaseTrainer:
 
         self.k_sets = self.vol_data.k_sets
 
-    def get_estimates(self, inp_1, inp_2):
+    def get_estimates(self, *inps):
         """
-        Computes the estimates for the input crops inp_1 and inp_2.
+        Computes one estimate per input crop batch, e.g. est_1, est_2 = self.get_estimates(inp_1, inp_2).
         """
         if self.configs.use_mixed_precision:
             with self.autocast:
-                est_1 = self.model(inp_1[:, None])[:, 0]
-                est_2 = self.model(inp_2[:, None])[:, 0]
-            est_1 = est_1.float()
-            est_2 = est_2.float()
-        else:
-            est_1 = self.model(inp_1[:, None])[:, 0]
-            est_2 = self.model(inp_2[:, None])[:, 0]
-
-        return est_1, est_2
+                ests = [self.model(inp[:, None])[:, 0] for inp in inps]
+            return tuple(est.float() for est in ests)
+        return tuple(self.model(inp[:, None])[:, 0] for inp in inps)
 
     def train(self, iterations=None, configs=None):
         self.model.train()

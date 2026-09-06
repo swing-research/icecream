@@ -69,19 +69,24 @@ class EquivariantTrainer(BaseTrainer):
         wedge_input = self.wedge_input_dev[idx]
         wedge_ref = self.wedge_ref_dev[idx]
         wedge_full = self.wedge_full_dev[idx]
+        # eq_single_direction: keep one Noise2Noise direction per step, doubled so the expected loss is unchanged.
+        # The s=1 direction is the mirror of s=0, so swapping the halves lets the code below only compute s=0.
+        one_dir = self.configs.eq_single_direction
+        scale = 2.0 if one_dir else 1.0
+        if one_dir and torch.rand(1).item() < 0.5:
+            inp_1, inp_2, est_1, est_2 = inp_2, inp_1, est_2, est_1
 
-        obs_loss = fourier_loss(inp_2,est_1,
-                                wedge_input,
-                                self.criteria,
+        obs_loss = fourier_loss(inp_2, est_1, wedge_input, self.criteria,
                                 use_fourier=self.configs.use_fourier,
                                 view_as_real=self.configs.view_as_real,
-                                window=self.window_input) + fourier_loss(inp_1,
-                                                        est_2, 
-                                                        wedge_input,
-                                                        self.criteria,
-                                                        use_fourier=self.configs.use_fourier,
-                                                        view_as_real=self.configs.view_as_real,
-                                                        window=self.window_input)
+                                window=self.window_input)
+        if one_dir:
+            obs_loss = scale * obs_loss
+        else:
+            obs_loss = obs_loss + fourier_loss(inp_1, est_2, wedge_input, self.criteria,
+                                               use_fourier=self.configs.use_fourier,
+                                               view_as_real=self.configs.view_as_real,
+                                               window=self.window_input)
         est_1_rot, est_2_rot, inp_1_rot, inp_2_rot, wedge_rot = batch_rot_4vol(est_1,est_2, inp_1, inp_2, k_sets=self.k_sets,wedge=wedge_full)
         wedge_rot = wedge_rot[:,:-1,:-1,:-1]  # remove last row, column and slice to make it odd sized
         # make the rotated wedge positive semidefinite
@@ -90,25 +95,25 @@ class EquivariantTrainer(BaseTrainer):
         est_2_ref = est_2_rot.clone()
         est_1_ref = get_measurement(est_1_ref, wedge_ref)
         est_2_ref = get_measurement(est_2_ref, wedge_ref)
-        # Apply wedge to rotated estimates
+        # eq_stop_grad_inner: the first-pass output is a constant input to the second pass.
+        if self.configs.eq_stop_grad_inner:
+            est_1_rot, est_2_rot = est_1_rot.detach(), est_2_rot.detach()
+        # Apply wedge to rotated estimates and run the second pass (once when one_dir)
         est_1_rot_inp = get_measurement(est_1_rot, wedge_input)
-        est_2_rot_inp = get_measurement(est_2_rot, wedge_input)
-        est_1_rot_est, est_2_rot_est = self.get_estimates(est_1_rot_inp, est_2_rot_inp)
-        if self.configs.eq_use_direct:
-            equi_loss_est = (self.criteria(est_2_ref, est_1_rot_est) + self.criteria(est_1_ref, est_2_rot_est))* self.configs.eq_weight
+        if one_dir:
+            est_1_rot_est, = self.get_estimates(est_1_rot_inp)
+            pairs = [(est_2_ref, est_1_rot_est)]
         else:
-            equi_loss_est = (fourier_loss_batch(est_2_ref,est_1_rot_est,
-                            wedge_rot, 
-                            self.criteria,
-                            use_fourier=self.configs.use_fourier,
-                            view_as_real=self.configs.view_as_real,
-                            window=self.window) + fourier_loss_batch(est_1_ref,
-                                                    est_2_rot_est, 
-                                                    wedge_rot, 
-                                                    self.criteria,
-                                                    use_fourier=self.configs.use_fourier,
-                                                    view_as_real=self.configs.view_as_real,
-                                                    window=self.window))*self.configs.eq_weight
+            est_2_rot_inp = get_measurement(est_2_rot, wedge_input)
+            est_1_rot_est, est_2_rot_est = self.get_estimates(est_1_rot_inp, est_2_rot_inp)
+            pairs = [(est_2_ref, est_1_rot_est), (est_1_ref, est_2_rot_est)]
+        if self.configs.eq_use_direct:
+            equi_loss_est = sum(self.criteria(ref, est) for ref, est in pairs) * scale * self.configs.eq_weight
+        else:
+            equi_loss_est = sum(fourier_loss_batch(ref, est, wedge_rot, self.criteria,
+                                                   use_fourier=self.configs.use_fourier,
+                                                   view_as_real=self.configs.view_as_real,
+                                                   window=self.window) for ref, est in pairs) * scale * self.configs.eq_weight
         loss = obs_loss + equi_loss_est
         equi_loss = equi_loss_est
 

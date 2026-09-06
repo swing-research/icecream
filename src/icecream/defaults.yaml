@@ -32,6 +32,8 @@ train_params:
   view_as_real: false # false: MSE on the real part after the inverse FFT. true: MSE over real and imaginary parts, which halves the loss value since the imaginary part is zero for a Hermitian wedge. No effect on training under Adam.
   upsample_volume: false # Upsample the full volume by a factor 2 if true.
   eq_use_direct: false # If false, the rotated wedge is maksed from the loss computation.
+  eq_stop_grad_inner: true # The sg variant. If true, the second network pass sees the rotated first-pass estimate as a constant (no gradient back through it); the first pass is then trained by the data term only and the equivariance term trains only the second pass. false is the original icecream behaviour.
+  eq_single_direction: false # If true, each step uses one randomly chosen Noise2Noise direction, doubled so the expected loss is unchanged, and runs the second network pass once instead of twice. false is the original behaviour.
   min_distance: 0.5 # Minimum relative difference between rotated and unrotated missing wedge.
   load_device: false # load all the full tomograms on the device. Will be faster but requires more memory.
   num_workers: 0 # Hardcoded to 0 at the moment.
@@ -51,6 +53,7 @@ predict_params:
 model_params:
   name: "unet3d_bf" # Name of the model. Only "unet3d_bf" is supported at the moment.
   num_levels: 4 # Number of layers.
+  f_maps: 32 # Feature maps at the first level, doubled at every level below (32, 64, 128, 256 with num_levels 4; 4.1 M parameters). The original icecream used the pytorch-3dunet default of 64 (16.3 M parameters); every sg-variant run so far used 32, and 32 vs 64 has not been compared on quality.
   upsample: "default" # Upsampling technique in the Unet.
   layer_order: "cr"  # Determines the order of layers in `SingleConv` module.
   use_bias: false # Include bias in the neural network. We observed that setting it to false leads to a more robust network.
