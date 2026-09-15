@@ -121,7 +121,7 @@ def cli_train(
         cli_updates["train_params"]["device"] = parsed_device
     if crop_size is not None:
         cli_updates["train_params"]["crop_size"] = crop_size
-        cli_updates["predict_params"]["stride"] = crop_size//2
+        cli_updates["predict_params"]["stride"] = crop_size * 2 // 3  # matches the default 48 for crop 72
     if iterations is not None: cli_updates["train_params"]["iterations"] = iterations
     if save_n_iterations is not None: cli_updates["train_params"]["save_n_iterations"] = save_n_iterations
     if eq_weight is not None: cli_updates["train_params"]["eq_weight"] = eq_weight
@@ -217,7 +217,7 @@ def cli_predict(
     if device is not None: cli_updates["train_params"]["device"] = device
     if crop_size is not None:
         cli_updates["train_params"]["crop_size"] = crop_size
-        cli_updates["predict_params"]["stride"] = crop_size//2
+        cli_updates["predict_params"]["stride"] = crop_size * 2 // 3  # matches the default 48 for crop 72
 
     cfg = deep_update(cfg, cli_updates)
 

@@ -95,6 +95,7 @@ class EquivariantTrainerDDP(EquivariantTrainer):
                                     use_flips=self.configs.use_flips,
                                     n_crops=self.configs.batch_size,
                                     normalize_crops=self.configs.normalize_crops,
+                                    min_distance=self.configs.min_distance,
                                     k_sets = k_sets,
                                     device='cpu')
 
@@ -162,7 +163,6 @@ class EquivariantTrainerDDP(EquivariantTrainer):
         print(f"Total iterations: {self.configs.iterations}")
         while iteration < self.configs.iterations:
         # for iteration in range(iterations):
-            loss_val_set = []
             self.sampler.set_epoch(iteration)
             for data in self.vol_loader:
                 iteration += 1
@@ -185,12 +185,14 @@ class EquivariantTrainerDDP(EquivariantTrainer):
                 else:
                     loss.backward()
                     self.optimizer.step()
-                loss_val_set.append(float(loss.detach().item()))
 
-                #print(f"Rank {self.rank}, Iteration {iteration+1}, Loss: {loss_val_set[-1]:.4f}")
+                if self.rank != 0 and iteration % self.configs.compute_avg_loss_n_iterations == 0:
+                    self.compute_average_loss()  # keeps the per-step scalar lists bounded on every rank
                 if self.rank == 0:
                     if iteration > len(self.vol_loader) and iteration % self.configs.compute_avg_loss_n_iterations == 0:
                         self.compute_average_loss()
+                        loss_val = self.loss_avg_set[-1]
+                        ema = loss_val if np.isnan(ema) else (alpha * loss_val + (1 - alpha) * ema)
 
                         iter_ = np.arange(0, iteration * self.n_volumes+1, self.configs.compute_avg_loss_n_iterations)[1:]
                         iter_ = iter_[:len(self.loss_avg_set)]
@@ -230,8 +232,6 @@ class EquivariantTrainerDDP(EquivariantTrainer):
                     pbar.set_postfix(iteration=iteration + 1, ema_loss=f"{ema:.4f}", loss=f"{loss_val:.4f}")
                     pbar.update(1)
 
-            loss_val = np.mean(loss_val_set)
-            ema = loss_val if np.isnan(ema) else (alpha * loss_val + (1 - alpha) * ema)
         if self.rank == 0:
             print("####################")
             print("  Finished training the model.")

@@ -64,7 +64,7 @@ def train_model(config_yaml):
     seed = config_yaml.get('train_params', {}).get('seed', 42)
     torch.manual_seed(seed)
     np.random.seed(seed)
-    torch.backends.cudnn.deterministic = True
+    torch.backends.cudnn.benchmark = True  # static shapes: let cuDNN pick the fastest conv algorithms
 
     # Params
     configs = SimpleNamespace(**config_yaml)
@@ -137,8 +137,9 @@ def train_model(config_yaml):
     wedge_t[wedge_t>0.1]  = 1
     
     random_cube = torch.rand(crop_size,crop_size,crop_size)
-    _, _, k_sets, _ = generate_all_cube_symmetries_torch(random_cube,wedge_t,use_flips = 
-                                                          configs.train_params['use_flips'])
+    _, _, k_sets, _ = generate_all_cube_symmetries_torch(random_cube,wedge_t,use_flips =
+                                                          configs.train_params['use_flips'],
+                                                          min_distance=configs.train_params['min_distance'])
 
     # Define the model and the trainer
     model = get_model(**configs.model_params)
@@ -218,7 +219,7 @@ def worker(rank, gpus, free_port,
     seed = train_config.seed
     torch.manual_seed(seed+rank)
     np.random.seed(seed+rank)
-    torch.backends.cudnn.deterministic = True
+    torch.backends.cudnn.benchmark = True  # static shapes: let cuDNN pick the fastest conv algorithms
     torch.set_num_threads(threads_per_rank)
 
     world_size = len(gpus)

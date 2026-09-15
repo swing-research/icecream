@@ -416,7 +416,7 @@ class Decoder(nn.Module):
                                          num_groups=num_groups,
                                          padding=padding,
                                          dropout_prob=dropout_prob,
-                                         is3d=is3d,padding_mode=padding_mode,)
+                                         is3d=is3d,use_bias=use_bias,padding_mode=padding_mode,)
 
     def forward(self, encoder_features, x):
         x = self.upsampling(encoder_features=encoder_features, x=x)

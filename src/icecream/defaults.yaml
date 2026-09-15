@@ -28,12 +28,11 @@ train_params:
   use_inp_wedge: false # Use reconstructed wedge in the equivariance loss if false. The paper describe the case where it is false.
   learning_rate: 1e-4 # Learning rate for training the network. Reduce it if training is chaotic.
   use_mixed_precision: true # Use mixed precision tensor if true. This allows the training to be roughly twice faster at the cost of worse numerical precision. Usually setting it to true leads to still accurate results.
-  no_window: false # If true, use the full tomogram to train the model. If false, only the central part of the volume is used for training.
-  view_as_real: true # Ignore imaginary part after inverse Fourier transform is true.
+  no_window: true # If true, the loss covers the whole sub-tomogram and prediction blends overlapping tiles with a Hann window. If false, only the central half of each sub-tomogram enters the loss and tiles are blended with a boxcar; the old default, which leaves the outer rim of every tile unconstrained.
+  view_as_real: false # false: MSE on the real part after the inverse FFT. true: MSE over real and imaginary parts, which halves the loss value since the imaginary part is zero for a Hermitian wedge. No effect on training under Adam.
   upsample_volume: false # Upsample the full volume by a factor 2 if true.
   eq_use_direct: false # If false, the rotated wedge is maksed from the loss computation.
   min_distance: 0.5 # Minimum relative difference between rotated and unrotated missing wedge.
-  window_type: "boxcar" # Shape of the crop.
   load_device: false # load all the full tomograms on the device. Will be faster but requires more memory.
   num_workers: 0 # Hardcoded to 0 at the moment.
   pretrain_params:
@@ -43,7 +42,7 @@ train_params:
 predict_params:
   save_dir_reconstructions: null # where to save the reconstructions. Default is same as data.save_dir.
   batch_size: 5 # Inference batch size. Reduce if memory issue.
-  stride: 36 # Number of pixel between two reconstructed subtomograms. Overlap is handled by averaging.
+  stride: 48 # Number of pixel between two reconstructed subtomograms. Overlap is handled by weighted averaging (Hann blend when no_window is true). 36 = crop/2 gives 8 tiles per voxel; 48 gives ~3 at half the cost with the same quality.
   pre_pad: true # Pad the original subtomograms with 0.
   pre_pad_size: null # Size of padding to apply to the full tomogram.
   avg_pool: false  # Use average pooling to smooth the input tomogram to process.
@@ -57,7 +56,7 @@ model_params:
   use_bias: false # Include bias in the neural network. We observed that setting it to false leads to a more robust network.
   padding_mode: "zeros" # Padding mode for convolutions.
   pool_type: "max" # Pooling in the Unet.
-  dropout_prob: 0.1 # Dropout, kills randomly percentage of the weights of the model.s
+  dropout_prob: 0.1 # Dropout probability. Only active when layer_order contains 'd' (e.g. "crd"); with the default "cr" no dropout layer is created.
 
 mask_params:
   use_mask: true # Apply a lamella mask to the tomogram. If a mask file is not provided, it will be generated similarly to IsoNet using the parameters below.

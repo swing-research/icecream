@@ -1,7 +1,6 @@
 import torch
 import torch.nn.functional as F
 from icecream.utils.utils import get_measurement
-from torch.utils.data import DataLoader
 from tqdm import tqdm
 
 
@@ -37,41 +36,6 @@ def generate_crops(vol_1, vol_2, size, stride):
     crops_2 = torch.stack(crops_2)
     return crops_1, crops_2
 
-def crop_volumes(volume, stride, size, upsampled=False, window_inp=None):
-    N1,N2,N3 = volume.shape
-
-    n1 = (N1 - size) // stride + 1
-    n2 = (N2 - size) // stride + 1
-    n3 = (N3 - size) // stride + 1
-    num_crops = n1 * n2 * n3
-
-    if window_inp is not None:
-        window_inp = window_inp.to(device=volume.device, dtype=volume.dtype)
-
-    out = torch.empty(
-            (num_crops, size, size, size),
-            dtype=volume.dtype,
-            device='cpu',
-        )
-    idx = 0
-    with torch.no_grad():
-        for i in range(0, N1 , stride):
-            for j in range(0, N2 , stride):
-                for k in range(0, N3 , stride):
-                    if(i+size >  N1 or j+size > N2 or k+size > N3):
-                            continue
-                    crop = volume[i:i+size,j:j+size,k:k+size]
-                    if window_inp is not None:
-                        crop = crop * window_inp
-                    if upsampled:
-                        crop = downsample_crop(crop[None])[0]
-                    crop = crop.to('cpu')
-                    out[idx] = crop
-                    idx += 1
-    # remove the extra allocated space
-    crops = out[:idx]
-    return crops 
-
 def downsample_crop(crops):
     b,n1,n2,n3 = crops.shape
     crops_fft = torch.fft.fftshift(torch.fft.fftn(crops, dim=(-3, -2, -1)))
@@ -88,12 +52,15 @@ def inference(vol_input, model, size, stride, batch_size,
               pre_pad_size = 0,
               device = None,
               upsampled_= False,
-              avg_pool = False):
+              avg_pool = False,
+              run_double = True,
+              blend = 'hann'):
     """
     Function to run the inference on the volume
 
     run_double: The is run twice on each crops 
-    update_missing_wdege: If True, only the missing wedge of the volume is updated
+    blend: overlap window used when `window` is None: 'hann' (separable Hann over the whole
+           tile, floored at 1e-3 so the weights never vanish) or 'ones' (plain average).
     """
 
     #ipdb.set_trace()
@@ -115,7 +82,6 @@ def inference(vol_input, model, size, stride, batch_size,
     if upsampled_:
         size = size*2
         stride = stride*2
-    window_inp = torch.ones((size,size,size), device=device)
     pad_i = compute_padd(vol_fbp.shape[0],size,stride)
     pad_j = compute_padd(vol_fbp.shape[1],size,stride)
     pad_k = compute_padd(vol_fbp.shape[2],size,stride)
@@ -124,79 +90,54 @@ def inference(vol_input, model, size, stride, batch_size,
     # low pass filter the volume to mimic the interpolation used while training
     if avg_pool:
         vol_fbp_pad = F.avg_pool3d(vol_fbp_pad[None,None], kernel_size=3, stride=1, padding=1)[0,0]
-    with torch.no_grad():
-        crops = crop_volumes(vol_fbp_pad, stride, size, upsampled=upsampled_, window_inp = window_inp)
-    crop_loader = DataLoader(crops, batch_size=batch_size, shuffle=False)
-    output_crops = torch.zeros_like(crops)
+    # Output grid: with `upsampled_` the network sees `size` voxels of the 2x volume and
+    # returns tiles at the original resolution, so the estimate is accumulated at size // s.
+    s = 2 if upsampled_ else 1
+    N1, N2, N3 = vol_fbp_pad.shape
+    out_size = size // s
+    if window is None:
+        if blend == 'hann':
+            w1 = torch.hann_window(out_size, periodic=False).clamp_min(1e-3)
+            window = w1[:, None, None] * w1[None, :, None] * w1[None, None, :]
+        else:
+            window = torch.ones((out_size, out_size, out_size))
+    window = window.to(device=device, dtype=torch.float32)
+    vol_est = torch.zeros((N1 // s, N2 // s, N3 // s), device=device)
+    weight = torch.zeros_like(vol_est)
+    starts = [(i, j, k) for i in range(0, N1 - size + 1, stride)
+                        for j in range(0, N2 - size + 1, stride)
+                        for k in range(0, N3 - size + 1, stride)]
 
     with torch.no_grad():
         model.eval()
-        idx = 0
-        for crop in tqdm(crop_loader,leave=False):
-            crop = crop.to(device)
+        for b in tqdm(range(0, len(starts), batch_size), leave=False):
+            batch = starts[b:b + batch_size]
+            crop = torch.stack([vol_fbp_pad[i:i+size, j:j+size, k:k+size] for i, j, k in batch])
+            if upsampled_:
+                crop = downsample_crop(crop)
             with torch.autocast(device_type='cuda', dtype=torch.float16):
                 output = model(crop[:,None])[:,0]
             # Convert to float32
             output = output.float()
-            output = get_measurement(output, wedge)
-            with torch.autocast(device_type='cuda', dtype=torch.float16):
-                output = model(output[:,None])[:,0]
-            # Convert to float32
-            output_crop = output
+            if run_double:  # second application on the wedge-masked first estimate (paper Eq. 5)
+                output = get_measurement(output, wedge)
+                with torch.autocast(device_type='cuda', dtype=torch.float16):
+                    output = model(output[:,None])[:,0]
+            output = output.float() * window
+            for n, (i, j, k) in enumerate(batch):
+                i, j, k = i // s, j // s, k // s
+                vol_est[i:i+out_size, j:j+out_size, k:k+out_size] += output[n]
+                weight[i:i+out_size, j:j+out_size, k:k+out_size] += window
 
-            batch_size_curr = output_crop.shape[0]
-            output_crops[idx:idx+batch_size_curr] = output_crop.detach().cpu()
-            idx += batch_size_curr
-
-    N1,N2,N3 = vol_input.shape
-    if upsampled_:
-        N1_true = N1// 2
-        N2_true = N2// 2
-        N3_true = N3// 2
-        size = size//2
-        stride = stride//2
-        pre_pad_size = pre_pad_size//2
-    else:
-        N1_true = N1
-        N2_true = N2
-        N3_true = N3
-
-    vol_est= torch.zeros((N1_true,N2_true,N3_true))
-    if pre_pad:
-        vol_est =torch.nn.functional.pad(vol_est, (pre_pad_size,0,pre_pad_size,0,pre_pad_size,0))
-
-    N1_pad, N2_pad, N3_pad = vol_est.shape
-    pad_i = compute_padd(vol_est.shape[0],size,stride)
-    pad_j = compute_padd(vol_est.shape[1],size,stride)
-    pad_k = compute_padd(vol_est.shape[2],size,stride)
-    vol_est = torch.nn.functional.pad(vol_est, (0,pad_k,0,pad_j,0,pad_i))
-
-    N1, N2, N3 = vol_est.shape
-    mask = torch.zeros_like(vol_est)
-    if window is None:
-        window = torch.ones((size,size,size))
-    else:
-        window = window.cpu()
-    count = 0
-    for i in range(0, N1 , stride):
-        for j in range(0, N2 , stride):
-            for k in range(0, N3 , stride):
-                if(i+size >  N1 or j+size > N2 or k+size > N3):
-                        continue
-                vol_est[i:i+size,j:j+size,k:k+size] += output_crops[count]*window
-                mask[i:i+size,j:j+size,k:k+size] += window
-                count += 1
-    mask[mask==0] = 1
-    vol_est = vol_est / mask
-    vol_est = vol_est[:N1_pad,:N2_pad,:N3_pad]
-    vol_est_np = vol_est.numpy()
-    
-    if pre_pad:
-        vol_est_np = vol_est_np[pre_pad_size:,pre_pad_size:,pre_pad_size:]
+    weight[weight == 0] = 1
+    vol_est = (vol_est / weight).cpu()
+    # crop back to the input volume: pre-padding at the low end, tail padding at the high end
+    p = pre_pad_size // s if pre_pad else 0
+    n1, n2, n3 = (n // s for n in vol_input.shape)
+    vol_est_np = vol_est[p:p+n1, p:p+n2, p:p+n3].numpy()
     vol_inp_np = None
-    
-    del vol_fbp_pad 
-    del output_crops
+
+    del vol_fbp_pad, vol_est, weight
     torch.cuda.empty_cache()
 
     return vol_est_np, vol_inp_np

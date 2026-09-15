@@ -69,12 +69,12 @@ class AbstractUNet(nn.Module):
                                         conv_padding, conv_upscale, dropout_prob,
                                         layer_order, num_groups, pool_kernel_size, 
                                         is3d, positional_encoding,pool_type=pool_type,
-                                         padding_mode=padding_mode)
+                                        use_bias=use_bias, padding_mode=padding_mode)
 
         # create decoder path
         self.decoders = create_decoders(f_maps, basic_module, conv_kernel_size, conv_padding,
                                         layer_order, num_groups, upsample, dropout_prob,
-                                        is3d, padding_mode=padding_mode)
+                                        is3d, use_bias=use_bias, padding_mode=padding_mode)
 
         # in the last layer a 1×1 convolution reduces the number of output channels to the number of labels
         if is3d:

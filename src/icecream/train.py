@@ -19,7 +19,7 @@ def train_model(config_yaml):
     seed = config_yaml.get('train_params', {}).get('seed', 42)
     torch.manual_seed(seed)
     np.random.seed(seed)
-    torch.backends.cudnn.deterministic = True
+    torch.backends.cudnn.benchmark = True  # static shapes: let cuDNN pick the fastest conv algorithms
 
     # Params
     configs = SimpleNamespace(**config_yaml)

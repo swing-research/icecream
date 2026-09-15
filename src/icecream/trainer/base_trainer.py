@@ -19,6 +19,11 @@ from icecream.dataset.multi_volumes import MultiVolume
 from icecream.utils.inference_util import inference
 from icecream.utils.utils import get_wedge_3d_new, symmetrize_3D, get_measurement, fourier_loss, get_voxel_size, save_mrc
 
+def _mean(vals):
+    """Mean of per-step loss scalars (0-d tensors on any device, or floats) with a single host sync."""
+    return float(sum(vals) / len(vals)) if len(vals) else float('nan')
+
+
 class BaseTrainer:
     def __init__(self,
                  configs,
@@ -108,8 +113,10 @@ class BaseTrainer:
                                       low_support=wedge_support,
                                       use_spherical_support=self.configs.use_spherical_support)
         wedge_t = torch.tensor(wedge, dtype=torch.float32, device=self.device)
-        wedge_t_sym = symmetrize_3D(wedge_t)
-        wedge_t = (wedge_t_sym + wedge_t)/2
+        # Binarise only. The grid here is odd (crop_size + 1, DC at the centre) and
+        # symmetrize_3D assumes an even grid, so symmetrizing at this stage mirrors the
+        # wedge with a one-voxel shift and dilates it by ~6%. Hermitian symmetry is
+        # enforced by get_real_binary_filter after the trim to even size.
         wedge_t[wedge_t>0.1]  = 1
         return  wedge_t
 
@@ -205,6 +212,7 @@ class BaseTrainer:
                                     use_flips=self.configs.use_flips,
                                     n_crops=self.configs.batch_size,
                                     normalize_crops=self.configs.normalize_crops,
+                                    min_distance=self.configs.min_distance,
                                     device='cpu')
 
         # Hardcoded for now as we observe massive slowdown with other values
@@ -274,7 +282,6 @@ class BaseTrainer:
         ema = np.nan
         while iteration < self.configs.iterations:
         # for iteration in range(iterations):
-            loss_val_set = []
             for data in self.vol_loader:
                 iteration += 1
                 inp_1 = data['input_1'][0].to(self.device)
@@ -295,10 +302,11 @@ class BaseTrainer:
                 else:
                     loss.backward()
                     self.optimizer.step()
-                loss_val_set.append(float(loss.detach().item()))
 
                 if iteration > len(self.vol_loader) and iteration % self.configs.compute_avg_loss_n_iterations == 0:
                     self.compute_average_loss()
+                    loss_val = self.loss_avg_set[-1]
+                    ema = loss_val if np.isnan(ema) else (alpha * loss_val + (1 - alpha) * ema)
 
                     iter_ = np.arange(0, iteration * self.n_volumes+1, self.configs.compute_avg_loss_n_iterations)[1:]
                     iter_ = iter_[:len(self.loss_avg_set)]
@@ -338,8 +346,6 @@ class BaseTrainer:
                 pbar.set_postfix(iteration=iteration + 1, ema_loss=f"{ema:.4f}", loss=f"{loss_val:.4f}")
                 pbar.update(1)
 
-            loss_val = np.mean(loss_val_set)
-            ema = loss_val if np.isnan(ema) else (alpha * loss_val + (1 - alpha) * ema)
         print("####################")
         print("  Finished training the model.")
         print("####################")
@@ -368,9 +374,8 @@ class BaseTrainer:
                                                                use_fourier=self.configs.use_fourier,
                                                                window=self.window)
         with torch.no_grad():
-            self.loss_set.append(loss.item())
-            diff_loss = torch.mean(torch.abs(est_1 - est_2))
-            self.diff_loss_set.append(diff_loss.item())
+            self.loss_set.append(loss.detach())
+            self.diff_loss_set.append(torch.mean(torch.abs(est_1 - est_2)))
         return loss
 
 
@@ -378,11 +383,11 @@ class BaseTrainer:
         """
         Compute the average loss over the loss set.
         """
-        avg_loss = np.mean(self.loss_set)
-        avg_diff_loss = np.mean(self.diff_loss_set)
+        avg_loss = _mean(self.loss_set)
+        avg_diff_loss = _mean(self.diff_loss_set)
 
-        avg_obs_loss = np.mean(self.obs_loss_set)
-        avg_equi_loss = np.mean(self.equi_loss_set)
+        avg_obs_loss = _mean(self.obs_loss_set)
+        avg_equi_loss = _mean(self.equi_loss_set)
         #print(f"Average Loss: {avg_loss}, Average Diff Loss: {avg_diff_loss}")
         self.loss_set = []
         self.diff_loss_set = []
@@ -413,8 +418,8 @@ class BaseTrainer:
         torch.save({
             'model_state_dict': model_to_save.state_dict(),
             'optimizer_state_dict': self.optimizer.state_dict(),
-            'loss_set': self.loss_set,
-            'diff_loss_set': self.diff_loss_set,
+            'loss_set': [float(v) for v in self.loss_set],
+            'diff_loss_set': [float(v) for v in self.diff_loss_set],
             'loss_avg_set': self.loss_avg_set,
             'diff_loss_avg_set': self.diff_loss_avg_set,
             'obs_loss_avg_set': self.obs_loss_avg_set,
@@ -482,14 +487,15 @@ class BaseTrainer:
         if crop_size is None:
             crop_size = self.configs.crop_size
         else:
-            self.window = self.initialize_window(crop_size)
+            # no_window: keep the Hann blend chosen in setup instead of rebuilding the loss window
+            self.window = None if self.configs.no_window else self.initialize_window(crop_size)
             pre_pad_size = crop_size // 4
-        if hasattr(self.configs, 'window_type'):
-            self.window_type = self.configs.window_type
-        else:
-            self.window_type = None
         if stride < crop_size//2:
             stride = crop_size//2
+        if self.window is not None and getattr(self.configs, 'window_taper', 0) == 0 and stride > crop_size // 2:
+            # the boxcar only covers the central crop_size//2 cube: a larger stride leaves unblended holes
+            print(f'Boxcar blend: stride {stride} reduced to {crop_size // 2} to avoid gaps between tiles')
+            stride = crop_size // 2
 
         vol_est_list = []
         for i in range(len(self.vol_data.volume_1_set)):

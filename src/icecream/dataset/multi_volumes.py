@@ -3,7 +3,6 @@ import torch
 import numpy as np
 from torch.utils.data import Dataset
 from icecream.utils.utils import generate_all_cube_symmetries_torch, crop_volumes, crop_volumes_mask
-from skimage.filters import window as skimage_window
 
 class MultiVolume(Dataset):
     def __init__(self, volume_1_set,volume_2_set, 
@@ -15,7 +14,7 @@ class MultiVolume(Dataset):
                  mask_frac = 0.3,
                  n_crops = 2,
                  normalize_crops = False,
-                 window_type = 'boxcar',
+                 min_distance = 0.5,
                  k_sets = None,
                  device = 'cpu'):
         """
@@ -32,10 +31,7 @@ class MultiVolume(Dataset):
         self.use_flips = use_flips
         self.normalize_crops = normalize_crops
         self.n_crops = n_crops
-
-        self.window = torch.tensor(skimage_window(window_type, (crop_size,crop_size, crop_size)),
-                                   dtype=torch.float32, 
-                                   device=self.device)[None]
+        self.min_distance = min_distance
 
         if k_sets is not None:
             self.k_sets = k_sets
@@ -52,7 +48,8 @@ class MultiVolume(Dataset):
         wedge = self.wedge_set[0] 
         if wedge.device is not self.device:
             wedge = wedge.to(self.device)
-        _, _, k_sets, _ = generate_all_cube_symmetries_torch(random_cube,wedge,use_flips = self.use_flips)
+        _, _, k_sets, _ = generate_all_cube_symmetries_torch(random_cube,wedge,use_flips = self.use_flips,
+                                                          min_distance=self.min_distance)
         self.k_sets = k_sets
 
     def __len__(self):
@@ -72,7 +69,7 @@ class MultiVolume(Dataset):
         return data_dict
 
     def get_random_crop(self, index, n_crops):
-        if self.mask_set is not None:
+        if self.mask_set:  # None or [] (use_mask: false) both mean no masks
             return self.get_random_crop_mask(index,n_crops)
         else:
             return self.get_random_crop_no_mask(index,n_crops)
@@ -105,8 +102,8 @@ class MultiVolume(Dataset):
                                                 self.mask_frac,
                                                 self.crop_size,
                                                 n_crops)
-        crops_1 = torch.stack(crops_1)*self.window
-        crops_2 = torch.stack(crops_2)*self.window
+        crops_1 = torch.stack(crops_1)
+        crops_2 = torch.stack(crops_2)
         if self.normalize_crops:
             crops_1, crops_2 = self.cropwisze_normalize(crops_1, crops_2)
         data_dict = {'input_1': crops_1, 

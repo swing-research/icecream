@@ -51,6 +51,11 @@ class EquivariantTrainer(BaseTrainer):
                 wedge_ref = wedge_ref.cpu()
             wedge_ref = self.get_real_binary_filter(wedge_ref)
             self.wedge_ref_set.append(wedge_ref)
+        # Device-resident copies for compute_loss, made once. The lists above stay where they
+        # are because the dataset (MultiVolume) reads them.
+        self.wedge_input_dev = [w.to(self.device) for w in self.wedge_input_set]
+        self.wedge_ref_dev = [w.to(self.device) for w in self.wedge_ref_set]
+        self.wedge_full_dev = [w.to(self.device) for w in self.wedge_full_set]
         self.window = self.initialize_window(self.crop_size_eq)
         if self.configs.no_window:
             print('No window applied')
@@ -61,9 +66,9 @@ class EquivariantTrainer(BaseTrainer):
 
     def compute_loss(self, inp_1, inp_2, idx):
         est_1, est_2 = self.get_estimates(inp_1, inp_2)
-        wedge_input = self.wedge_input_set[idx].to(self.device)
-        wedge_ref = self.wedge_ref_set[idx].to(self.device)
-        wedge_full = self.wedge_full_set[idx].to(self.device)
+        wedge_input = self.wedge_input_dev[idx]
+        wedge_ref = self.wedge_ref_dev[idx]
+        wedge_full = self.wedge_full_dev[idx]
 
         obs_loss = fourier_loss(inp_2,est_1,
                                 wedge_input,
@@ -109,11 +114,11 @@ class EquivariantTrainer(BaseTrainer):
 
         #print(loss.item(), obs_loss.item(), equi_loss.item())
 
+        # Keep the scalars on the device; compute_average_loss reads them back in one sync.
         with torch.no_grad():
-            self.loss_set.append(loss.item())
-            self.obs_loss_set.append(obs_loss.item())
-            self.equi_loss_set.append(equi_loss.item())
-            diff_loss = torch.mean(torch.abs(est_1 - est_2))
-            self.diff_loss_set.append(diff_loss.item())
+            self.loss_set.append(loss.detach())
+            self.obs_loss_set.append(obs_loss.detach())
+            self.equi_loss_set.append(equi_loss.detach())
+            self.diff_loss_set.append(torch.mean(torch.abs(est_1 - est_2)))
         return loss
 
